@@ -17,7 +17,9 @@ setup(
     packages=find_packages(),
     install_requires=[
         'terminalcast',
-        'flask',
+        'Flask',
+        'redis',
+        'flask_socketio',
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
