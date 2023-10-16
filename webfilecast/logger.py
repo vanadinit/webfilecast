@@ -4,7 +4,6 @@ from logging import StreamHandler, getLogger, INFO
 
 from flask_socketio import SocketIO
 
-WS_LOG_ID = 'WFC_LOG_MSG'
 LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 
 
@@ -35,7 +34,8 @@ class WebSocketHandler(StreamHandler):
     def emit(self, record):
         try:
             msg = self.format(record)
-            self.socketio.emit(f'logmessage_{self.cmd_id}', conv.convert(msg, full=False), broadcast=True)
+            # use https://pypi.org/project/ansi2html/ for nice converted and colored messages
+            self.socketio.emit(f'logmessage', msg, broadcast=True)
             self.flush()
         except Exception:
             self.handleError(record)
@@ -44,7 +44,7 @@ class WebSocketHandler(StreamHandler):
 def init_logger(name: str) -> logging.Logger:
     formatter = logging.Formatter(LOG_FORMAT)
 
-    ws_handler = WebSocketHandler(cmd_id=WS_LOG_ID)
+    ws_handler = WebSocketHandler()
     ws_handler.setLevel(INFO)
     ws_handler.setFormatter(formatter)
 

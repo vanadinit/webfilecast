@@ -1,0 +1,23 @@
+<html>
+<head>
+    <title>Webfilecast</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
+            integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
+            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"
+            integrity="sha512-zoJXRvW2gC8Z0Xo3lBbao5+AS3g6YWr5ztKqaicua11xHo+AvE1b0lT9ODgrHTmNUxeCw0Ry4BGRYZfXu70weg=="
+            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script type="text/javascript" src="main.js"></script>
+    <link rel="stylesheet" href="main.css">
+</head>
+<body>
+<h1>Webfilecast</h1>
+<div>
+    <p id="ws_status">Starting ...</p>
+    <button onclick="window.socket.emit('get_files')">Select file</button>
+    <div id="file_list"></div>
+    <div id="messages"></div>
+    <p id="bottombox"></p>
+</div>
+</body>
+</html>
