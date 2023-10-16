@@ -2,7 +2,7 @@ import logging
 import sys
 from logging import StreamHandler, getLogger, INFO
 
-from flask_socketio import SocketIO
+from flask_socketio import emit
 
 LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 
@@ -29,13 +29,12 @@ class WebSocketHandler(StreamHandler):
     def __init__(self, cmd_id: str = ''):
         StreamHandler.__init__(self)
         self.cmd_id = cmd_id
-        self.socketio = SocketIO(message_queue='redis://')
 
     def emit(self, record):
         try:
             msg = self.format(record)
             # use https://pypi.org/project/ansi2html/ for nice converted and colored messages
-            self.socketio.emit(f'logmessage', msg, broadcast=True)
+            emit('logmessage', msg, broadcast=True)
             self.flush()
         except Exception:
             self.handleError(record)

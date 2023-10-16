@@ -8,7 +8,7 @@ function websocketStatus() {
             statusIndicator.innerHTML = '<span class="msg-success">Connected</span>';
             timeoutCounter = 0;
         } else {
-            statusIndicator.innerHTML = '<span class="msg-error">Disconnected (${timeoutCounter})</span>';
+            statusIndicator.innerHTML = `<span class="msg-error">Disconnected (${timeoutCounter})</span>`;
             timeoutCounter++;
         }
         if (timeoutCounter > 60) {
@@ -19,17 +19,26 @@ function websocketStatus() {
 }
 
 window.socket.on('movie_files', function (filelist) {
+    console.log('Got movie file list');
     const fileListElem = document.getElementById('file_list');
     const fileListSelect = document.createElement('select');
-    fileListSelect.onclick(window.socket.emit('select_file', fileListSelect.value);
+    fileListSelect.addEventListener('click', function () {window.socket.emit('select_file', fileListSelect.value);});
 
     for (i = 0; i < filelist.length; i++) {
       var opt = document.createElement("option");
-      opt.id = i;
-      opt.innerHTML = i;
+      opt.id = filelist[i];
+      opt.innerHTML = filelist[i];
       fileListSelect.appendChild(opt);
     };
+
+    fileListElem.innerHTML = '';
+    fileListElem.appendChild(fileListSelect);
 })
+
+window.socket.on('show_file_details', function (file_details) {
+    const fileDetails = document.getElementById('file_details');
+    fileDetails.innerHTML = file_details;
+});
 
 window.socket.on('logmessage', function (msg) {
     const messagesElem = document.getElementById('messages');

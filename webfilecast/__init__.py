@@ -61,12 +61,14 @@ def main():
 
 @socketio.on('get_files')
 def get_files():
+    print('WS: get_files')
     emit('movie_files', listdir(MOVIE_DIRECTORY))
     return 'OK, 200'
 
 
 @socketio.on('select_file')
 def select_file(filename: str):
+    print('WS: select_file')
     wfc_info.orig_file_path = wfc_info.file_path = f'{MOVIE_DIRECTORY}/{filename}'
     emit('show_file_details', wfc_info.file_metadata.details())
     if len(wfc_info.file_metadata.audio_streams) > 1:
@@ -81,6 +83,7 @@ def select_file(filename: str):
 
 @socketio.on('select_lang')
 def select_lang(lang_id: int):
+    print('WS: select_lang')
     wfc_info.audio_stream = wfc_info.file_metadata.audio_streams[lang_id]
     if lang_id != 0:
         wfc_info.audio_ready = False
