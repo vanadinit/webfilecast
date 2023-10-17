@@ -8,7 +8,7 @@ from flask import Flask, send_from_directory
 from flask_socketio import SocketIO, emit
 from terminalcast import FileMetadata, create_tmp_video_file, AudioMetadata
 
-from webfilecast.logger import LoggerWriter, init_logger
+from webfilecast.logger import init_logger
 
 MOVIE_DIRECTORY = getenv('MOVIE_DIRECTORY')
 
@@ -20,6 +20,8 @@ socketio = SocketIO(
     engineio_logger=False,
     cors_allowed_origin=[getenv('BASE_URL')],
 )
+
+LOG = init_logger('webfilecast')
 
 
 class WfcInfo:
@@ -61,14 +63,14 @@ def main():
 
 @socketio.on('get_files')
 def get_files():
-    print('WS: get_files')
+    LOG.info('WS: get_files')
     emit('movie_files', listdir(MOVIE_DIRECTORY))
     return 'OK, 200'
 
 
 @socketio.on('select_file')
 def select_file(filename: str):
-    print('WS: select_file')
+    LOG.info('WS: select_file')
     wfc_info.orig_file_path = wfc_info.file_path = f'{MOVIE_DIRECTORY}/{filename}'
     emit('show_file_details', wfc_info.file_metadata.details())
     if len(wfc_info.file_metadata.audio_streams) > 1:
@@ -83,7 +85,7 @@ def select_file(filename: str):
 
 @socketio.on('select_lang')
 def select_lang(lang_id: int):
-    print('WS: select_lang')
+    LOG.info('WS: select_lang')
     wfc_info.audio_stream = wfc_info.file_metadata.audio_streams[lang_id]
     if lang_id != 0:
         wfc_info.audio_ready = False
@@ -130,9 +132,5 @@ def stop():
 
 
 if __name__ == '__main__':
-    logger = init_logger('webfilecast')
-    # To access the original stdout/stderr, use sys.__stdout__/sys.__
-    sys.stdout = LoggerWriter(logger.info)
-    sys.stderr = LoggerWriter(logger.error)
-
     socketio.run(app)
+

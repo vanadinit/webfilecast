@@ -41,6 +41,7 @@ window.socket.on('show_file_details', function (file_details) {
 });
 
 window.socket.on('logmessage', function (msg) {
+    console.log('Got message');
     const messagesElem = document.getElementById('messages');
     const bottomElem = document.getElementById('boxbottom');
 
