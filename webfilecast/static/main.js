@@ -42,12 +42,12 @@ window.socket.on('show_file_details', function (file_details) {
 
 window.socket.on('logmessage', function (msg) {
     const messagesElem = document.getElementById('messages');
-    const bottomElem = document.getElementById('boxbottom');
+    const bottomElem = document.getElementById('bottombox');
 
     const message = document.createElement('p');
     message.innerHTML = msg
     messagesElem.appendChild(message);
-    bottomElem[0].scrollIntoView();
+    bottomElem.scrollIntoView();
 });
 
 $(document).ready(function () {
