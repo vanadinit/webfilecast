@@ -1,7 +1,7 @@
 import logging
 import sys
 from functools import cached_property
-from logging import StreamHandler, getLogger, INFO
+from logging import StreamHandler, getLogger, INFO, DEBUG
 
 from flask_socketio import SocketIO
 
@@ -17,7 +17,7 @@ class WebSocketHandler(StreamHandler):
         try:
             msg = self.format(record)
             # use https://pypi.org/project/ansi2html/ for nice converted and colored messages
-            self.websocket.emit('logmessage', msg, broadcast=True)
+            self.websocket.emit('logmessage', msg)
             self.flush()
         except Exception:
             self.handleError(record)
@@ -25,6 +25,7 @@ class WebSocketHandler(StreamHandler):
 
 def init_logger(name: str) -> logging.Logger:
     log = getLogger(name)
+    log.setLevel(DEBUG)
 
     formatter = logging.Formatter(LOG_FORMAT)
 
