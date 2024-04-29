@@ -91,7 +91,10 @@ def main():
 def get_files():
     LOG.info('WS: get_files')
     movie_files = update_redis_file_cache()
-    emit('movie_files', sorted(movie_files.keys()))
+    emit('movie_files', sorted([
+        (movie.filepath, movie.ffoutput['format']['tags'].get('title', movie.filepath.split('/')[-1]))
+        for movie in movie_files.values()
+    ]))
     return 'OK, 200'
 
 
@@ -113,10 +116,10 @@ def select_file(filepath: str):
 
 
 @socketio.on('select_lang')
-def select_lang(lang_id: int):
+def select_lang(lang_id: str):
     LOG.info('WS: select_lang')
-    wfc_info.audio_stream = wfc_info.file_metadata.audio_streams[lang_id]
-    if lang_id != 0:
+    wfc_info.audio_stream = wfc_info.file_metadata.audio_streams[int(lang_id)]
+    if int(lang_id) != 0:
         wfc_info.audio_ready = False
         emit('audio_conversion_required')
     else:
@@ -141,7 +144,7 @@ def convert_for_audio_stream():
 def play():
     if wfc_info.ready:
         wfc_info.playing_process = Popen(
-            f'{sys.exec_prefix}/bin/terminalcast {wfc_info.file_path}',
+            f'{sys.exec_prefix}/bin/terminalcast {wfc_info.file_path} --non-interactive',
             stdout=sys.stdout,
             stderr=sys.stderr,
             shell=True,

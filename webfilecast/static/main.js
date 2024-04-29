@@ -25,10 +25,10 @@ window.socket.on('movie_files', function (filelist) {
     fileListSelect.addEventListener('click', function () {window.socket.emit('select_file', fileListSelect.value);});
 
     for (i = 0; i < filelist.length; i++) {
-      var opt = document.createElement("option");
-      opt.id = filelist[i];
-      opt.innerHTML = filelist[i];
-      fileListSelect.appendChild(opt);
+        var opt = document.createElement("option");
+        opt.value = filelist[i][0];
+        opt.innerHTML = filelist[i][1];
+        fileListSelect.appendChild(opt);
     };
 
     fileListElem.innerHTML = '';
@@ -38,6 +38,23 @@ window.socket.on('movie_files', function (filelist) {
 window.socket.on('show_file_details', function (file_details) {
     const fileDetails = document.getElementById('file_details');
     fileDetails.innerHTML = file_details;
+});
+
+window.socket.on('lang_options', function (options) {
+    console.log('Got language options');
+    const langListElem = document.getElementById('lang_list');
+    const langListSelect = document.createElement('select');
+    langListSelect.addEventListener('click', function () {window.socket.emit('select_lang', langListSelect.value);});
+
+    for (i = 0; i < options.length; i++) {
+        var opt = document.createElement("option");
+        opt.value = options[i][0];
+        opt.innerHTML = options[i][1];
+        langListSelect.appendChild(opt);
+    };
+
+    langListElem.innerHTML = '';
+    langListElem.appendChild(langListSelect);
 });
 
 window.socket.on('playing', function () {
