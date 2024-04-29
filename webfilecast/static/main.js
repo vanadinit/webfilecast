@@ -40,6 +40,21 @@ window.socket.on('show_file_details', function (file_details) {
     fileDetails.innerHTML = file_details;
 });
 
+window.socket.on('playing', function () {
+    const playerStatus = document.getElementById('player_status');
+    playerStatus.innerHTML = '<span class="msg-success">Playing ...</span>';
+})
+
+window.socket.on('stopping', function () {
+    const playerStatus = document.getElementById('player_status');
+    playerStatus.innerHTML = '<span class="msg-info">Stopping ...</span>';
+})
+
+window.socket.on('stopped', function () {
+    const playerStatus = document.getElementById('player_status');
+    playerStatus.innerHTML = '<span class="msg-error">Stopped</span>';
+})
+
 window.socket.on('logmessage', function (msg) {
     console.log('Got message');
     const messagesElem = document.getElementById('messages');

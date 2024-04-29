@@ -20,6 +20,7 @@ setup(
         'Flask',
         'redis',
         'flask_socketio',
+        'filetype>=1.0.0',
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
