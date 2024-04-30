@@ -67,7 +67,10 @@ def update_redis_file_cache() -> dict:
     for root, dirs, files in os.walk(MOVIE_DIRECTORY):
         for file in files:
             path = os.path.join(root, file)
-            if not is_video(path):
+            try:
+                if not is_video(path):
+                    continue
+            except PermissionError:
                 continue
             path_store_id = 'fm_' + md5(path.encode('utf-8')).hexdigest()
             if r_data := redis.get(path_store_id):
