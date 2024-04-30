@@ -16,7 +16,7 @@ setup(
     license='MIT',
     packages=find_packages(),
     install_requires=[
-        'terminalcast',
+        'terminalcast @ git+https://github.com/vanadinit/terminalcast@main',
         'Flask',
         'redis',
         'flask_socketio',
