@@ -3,6 +3,7 @@ import pickle
 import sys
 from hashlib import md5
 from subprocess import Popen, TimeoutExpired
+from time import sleep
 from typing import Optional
 
 from filetype import is_video
@@ -87,6 +88,12 @@ def main():
     return send_from_directory(directory='static', path='main.html')
 
 
+@socketio.on('is_ready')
+def is_ready():
+    emit('ready', wfc_info.ready)
+    return 'OK, 200'
+
+
 @socketio.on('get_files')
 def get_files():
     LOG.info('WS: get_files')
@@ -124,7 +131,7 @@ def select_lang(lang_id: str):
         emit('audio_conversion_required')
     else:
         wfc_info.audio_ready = True
-        emit('audio_conversion_needless')
+        is_ready()
 
 
 @socketio.on('convert_for_audio_stream')
@@ -135,9 +142,10 @@ def convert_for_audio_stream():
         filepath=wfc_info.file_path,
         audio_index=wfc_info.audio_stream.index[-1:],
     )
-    del wfc_info.file_metadata  # Clear cached property
     wfc_info.audio_ready = True
     emit('audio_conversion_finished')
+    sleep(2)
+    is_ready()
 
 
 @socketio.on('play')
@@ -150,6 +158,8 @@ def play():
             shell=True,
         )
         emit('playing')
+    else:
+        is_ready()
 
 
 @socketio.on('stop')

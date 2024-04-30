@@ -72,6 +72,30 @@ window.socket.on('stopped', function () {
     playerStatus.innerHTML = '<span class="msg-error">Stopped</span>';
 })
 
+window.socket.on('audio_conversion_required', function () {
+    const playerStatus = document.getElementById('player_status');
+    playerStatus.innerHTML = '<span class="msg-error">Audio conversion required! <button onclick="window.socket.emit(\'convert_for_audio_stream\')">Convert</button></span>';
+})
+
+window.socket.on('audio_conversion_started', function () {
+    const playerStatus = document.getElementById('player_status');
+    playerStatus.innerHTML = '<span class="msg-info">Audio conversion started...</span>';
+})
+
+window.socket.on('audio_conversion_finished', function () {
+    const playerStatus = document.getElementById('player_status');
+    playerStatus.innerHTML = '<span class="msg-success">Audio conversion finished</span>';
+})
+
+window.socket.on('ready', function (ready) {
+    const playerStatus = document.getElementById('player_status');
+    if (ready) {
+        playerStatus.innerHTML = '<span class="msg-success">Ready to play</span>';
+    } else {
+        playerStatus.innerHTML = '<span class="msg-success">Player not ready</span>';
+    }
+})
+
 window.socket.on('logmessage', function (msg) {
     console.log('Got message');
     const messagesElem = document.getElementById('messages');
