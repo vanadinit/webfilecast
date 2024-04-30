@@ -16,6 +16,7 @@ from webfilecast.logger import init_logger
 MOVIE_DIRECTORY = os.getenv('MOVIE_DIRECTORY')
 
 app = Flask(__name__)
+app.config['APPLICATION_ROOT'] = os.getenv('APPLICATION_ROOT', '/')
 socketio = SocketIO(
     app=app,
     message_queue='redis://',
