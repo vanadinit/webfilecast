@@ -21,7 +21,7 @@ socketio = SocketIO(
     message_queue='redis://',
     logger=False,
     engineio_logger=False,
-    cors_allowed_origin=[os.getenv('BASE_URL')],
+    cors_allowed_origin=[os.getenv('CORS_ORIGIN')],
 )
 
 redis = Redis()

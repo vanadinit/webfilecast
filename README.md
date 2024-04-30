@@ -6,5 +6,5 @@ Web Frontend for Terminalcast
 - Only one discoverable Chromecast (selection not implemented yet)
 
 ## ENV Vars
-- BASE_URL
+- CORS_ORIGIN
 - MOVIE_DIRECTORY
