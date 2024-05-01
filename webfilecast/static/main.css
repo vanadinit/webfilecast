@@ -11,10 +11,18 @@
 }
 
 body {
-    width: 60em;
+    width: 20em;
+    font-size: 5em;
 }
 
+
+button,select,option {
+    font-size: inherit;
+}
+
+
 #messages {
-    max-height: 30em;
+    max-height: 20em;
+    width: 100%;
     overflow-y: auto;
 }
