@@ -101,12 +101,11 @@ window.socket.on('ready', function (ready) {
 window.socket.on('logmessage', function (msg) {
     console.log('Got message');
     const messagesElem = document.getElementById('messages');
-    const bottomElem = document.getElementById('bottombox');
 
     const message = document.createElement('p');
     message.innerHTML = msg
     messagesElem.appendChild(message);
-    bottomElem.scrollIntoView();
+    message.scrollIntoView();
 });
 
 $(document).ready(function () {

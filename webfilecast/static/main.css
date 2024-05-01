@@ -9,3 +9,8 @@
 .msg-error {
     color: #ff0000;
 }
+
+#messages {
+    max-height: 12em;
+    overflow-y: auto;
+}

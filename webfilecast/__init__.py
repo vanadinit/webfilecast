@@ -2,7 +2,7 @@ import os
 import pickle
 import sys
 from hashlib import md5
-from subprocess import Popen, TimeoutExpired
+from subprocess import Popen, TimeoutExpired, PIPE
 from time import sleep
 from typing import Optional
 
@@ -159,6 +159,7 @@ def play():
             shell=True,
         )
         emit('playing')
+        # TODO Catch Output for Status https://stackoverflow.com/a/12272262
     else:
         is_ready()
 
