@@ -105,7 +105,7 @@ window.socket.on('logmessage', function (msg) {
     const message = document.createElement('p');
     message.innerHTML = msg
     messagesElem.appendChild(message);
-    message.scrollIntoView();
+    message.scrollIntoView(false);
 });
 
 $(document).ready(function () {
