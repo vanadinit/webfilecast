@@ -6,6 +6,7 @@ from subprocess import Popen, TimeoutExpired, PIPE
 from time import sleep
 from typing import Optional
 
+import select
 from filetype import is_video
 from flask import Flask, send_from_directory
 from flask_socketio import SocketIO, emit
@@ -152,14 +153,32 @@ def convert_for_audio_stream():
 @socketio.on('play')
 def play():
     if wfc_info.ready:
-        wfc_info.playing_process = Popen(
+        emit('start_playing')
+        wfc_info.playing_process = p = Popen(
             f'{sys.exec_prefix}/bin/terminalcast {wfc_info.file_path} --non-interactive',
-            stdout=sys.stdout,
-            stderr=sys.stderr,
+            stdout=PIPE,  # sys.stdout,
+            stderr=PIPE,  # sys.stderr,
             shell=True,
         )
-        emit('playing')
-        # TODO Catch Output for Status https://stackoverflow.com/a/12272262
+
+        # Code from https://stackoverflow.com/a/12272262
+        while True:
+            reads = [p.stdout.fileno(), p.stderr.fileno()]
+            ret = select.select(reads, [], [])
+            for fd in ret[0]:
+                if fd == p.stdout.fileno():
+                    read = p.stdout.readline().decode()
+                    sys.stdout.write(read)
+                    LOG.info(read)
+                    if read.startswith('----- Start playing video -----'):
+                        emit('playing')
+                if fd == p.stderr.fileno():
+                    read = p.stderr.readline().decode()
+                    sys.stderr.write(read)
+                    LOG.error(read)
+
+            if p is None or p.poll() is not None:
+                break
     else:
         is_ready()
 

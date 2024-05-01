@@ -59,6 +59,11 @@ window.socket.on('lang_options', function (options) {
     window.socket.emit('select_lang', langListSelect.value);
 });
 
+window.socket.on('start_playing', function () {
+    const playerStatus = document.getElementById('player_status');
+    playerStatus.innerHTML = '<span class="msg-success">Start Playing ...</span>';
+})
+
 window.socket.on('playing', function () {
     const playerStatus = document.getElementById('player_status');
     playerStatus.innerHTML = '<span class="msg-success">Playing ...</span>';

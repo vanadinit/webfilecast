@@ -10,7 +10,11 @@
     color: #ff0000;
 }
 
+#content {
+    width: 30em;
+}
+
 #messages {
-    max-height: 12em;
+    max-height: 15em;
     overflow-y: auto;
 }
