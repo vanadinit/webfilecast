@@ -22,7 +22,7 @@ window.socket.on('movie_files', function (filelist) {
     console.log('Got movie file list');
     const fileListElem = document.getElementById('file_list');
     const fileListSelect = document.createElement('select');
-    fileListSelect.addEventListener('click', function () {window.socket.emit('select_file', fileListSelect.value);});
+    fileListSelect.addEventListener('change', function () {window.socket.emit('select_file', fileListSelect.value);});
 
     for (i = 0; i < filelist.length; i++) {
         var opt = document.createElement("option");
@@ -33,6 +33,7 @@ window.socket.on('movie_files', function (filelist) {
 
     fileListElem.innerHTML = '';
     fileListElem.appendChild(fileListSelect);
+    window.socket.emit('select_file', fileListSelect.value);
 })
 
 window.socket.on('show_file_details', function (file_details) {
@@ -44,7 +45,7 @@ window.socket.on('lang_options', function (options) {
     console.log('Got language options');
     const langListElem = document.getElementById('lang_list');
     const langListSelect = document.createElement('select');
-    langListSelect.addEventListener('click', function () {window.socket.emit('select_lang', langListSelect.value);});
+    langListSelect.addEventListener('change', function () {window.socket.emit('select_lang', langListSelect.value);});
 
     for (i = 0; i < options.length; i++) {
         var opt = document.createElement("option");
@@ -55,6 +56,7 @@ window.socket.on('lang_options', function (options) {
 
     langListElem.innerHTML = '';
     langListElem.appendChild(langListSelect);
+    window.socket.emit('select_lang', langListSelect.value);
 });
 
 window.socket.on('playing', function () {

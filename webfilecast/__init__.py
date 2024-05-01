@@ -114,14 +114,11 @@ def select_file(filepath: str):
     LOG.info('WS: select_file')
     wfc_info.orig_file_path = wfc_info.file_path = filepath
     emit('show_file_details', wfc_info.file_metadata.details())
-    if len(wfc_info.file_metadata.audio_streams) > 1:
-        emit('lang_options', [
-            (stream_id, stream.title)
-            for stream_id, stream
-            in enumerate(wfc_info.file_metadata.audio_streams)
-        ])
-    else:
-        wfc_info.audio_ready = True
+    emit('lang_options', [
+        (stream_id, stream.title)
+        for stream_id, stream
+        in enumerate(wfc_info.file_metadata.audio_streams)
+    ])
 
     return 'OK, 200'
 
