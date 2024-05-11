@@ -1,17 +1,15 @@
 import os
 import pickle
-import sys
 from hashlib import md5
-from subprocess import Popen, TimeoutExpired, PIPE
 from time import sleep
 from typing import Optional
 
-import select
 from filetype import is_video
 from flask import Flask, send_from_directory
 from flask_socketio import SocketIO, emit
 from redis import Redis
-from terminalcast import FileMetadata, create_tmp_video_file, AudioMetadata
+from terminalcast import FileMetadata, create_tmp_video_file, AudioMetadata, TerminalCast
+
 from webfilecast.logger import init_logger
 
 MOVIE_DIRECTORY = os.getenv('MOVIE_DIRECTORY')
@@ -31,13 +29,13 @@ redis = Redis()
 LOG = init_logger('webfilecast')
 
 
-class WfcInfo:
+class WebfileCast:
     def __init__(self):
         self.orig_file_path: str = ''
         self.file_path: str = ''
         self.audio_stream: Optional[AudioMetadata] = None
         self.audio_ready = False
-        self.playing_process: Optional[Popen] = None
+        self.tcast: Optional[TerminalCast] = None
 
     @property
     def file_metadata(self) -> FileMetadata:
@@ -53,14 +51,11 @@ class WfcInfo:
             print('Audio not ready')
             return False
 
-        if self.playing_process:
+        if self.tcast.server_thread:
             print('Already playing')
             return False
 
         return True
-
-
-wfc_info = WfcInfo()
 
 
 def update_redis_file_cache() -> dict:
@@ -85,6 +80,7 @@ def update_redis_file_cache() -> dict:
     return movie_files
 
 
+wfc = WebfileCast()
 update_redis_file_cache()
 
 
@@ -95,7 +91,7 @@ def main():
 
 @socketio.on('is_ready')
 def is_ready():
-    emit('ready', wfc_info.ready)
+    emit('ready', wfc.ready)
     return 'OK, 200'
 
 
@@ -113,12 +109,12 @@ def get_files():
 @socketio.on('select_file')
 def select_file(filepath: str):
     LOG.info('WS: select_file')
-    wfc_info.orig_file_path = wfc_info.file_path = filepath
-    emit('show_file_details', wfc_info.file_metadata.details())
+    wfc.orig_file_path = wfc.file_path = filepath
+    emit('show_file_details', wfc.file_metadata.details())
     emit('lang_options', [
         (stream_id, stream.title)
         for stream_id, stream
-        in enumerate(wfc_info.file_metadata.audio_streams)
+        in enumerate(wfc.file_metadata.audio_streams)
     ])
 
     return 'OK, 200'
@@ -127,12 +123,12 @@ def select_file(filepath: str):
 @socketio.on('select_lang')
 def select_lang(lang_id: str):
     LOG.info('WS: select_lang')
-    wfc_info.audio_stream = wfc_info.file_metadata.audio_streams[int(lang_id)]
+    wfc.audio_stream = wfc.file_metadata.audio_streams[int(lang_id)]
     if int(lang_id) != 0:
-        wfc_info.audio_ready = False
+        wfc.audio_ready = False
         emit('audio_conversion_required')
     else:
-        wfc_info.audio_ready = True
+        wfc.audio_ready = True
         is_ready()
 
 
@@ -140,11 +136,11 @@ def select_lang(lang_id: str):
 def convert_for_audio_stream():
     LOG.info('WS: convert audio stream')
     emit('audio_conversion_started')
-    wfc_info.file_path = create_tmp_video_file(
-        filepath=wfc_info.file_path,
-        audio_index=wfc_info.audio_stream.index[-1:],
+    wfc.file_path = create_tmp_video_file(
+        filepath=wfc.file_path,
+        audio_index=wfc.audio_stream.index[-1:],
     )
-    wfc_info.audio_ready = True
+    wfc.audio_ready = True
     emit('audio_conversion_finished')
     sleep(2)
     is_ready()
@@ -152,33 +148,15 @@ def convert_for_audio_stream():
 
 @socketio.on('play')
 def play():
-    if wfc_info.ready:
+    if wfc.ready:
+        wfc.tcast = TerminalCast(filepath=wfc.file_path, select_ip=False)
+        LOG.info(wfc.tcast.cast.status)
+        LOG.info(wfc.tcast.get_video_url())
+        wfc.tcast.start_server()
         emit('start_playing')
-        wfc_info.playing_process = p = Popen(
-            f'{sys.exec_prefix}/bin/terminalcast {wfc_info.file_path} --non-interactive',
-            stdout=PIPE,  # sys.stdout,
-            stderr=PIPE,  # sys.stderr,
-            shell=True,
-        )
-
-        # Code from https://stackoverflow.com/a/12272262
-        while True:
-            reads = [p.stdout.fileno(), p.stderr.fileno()]
-            ret = select.select(reads, [], [])
-            for fd in ret[0]:
-                if fd == p.stdout.fileno():
-                    read = p.stdout.readline().decode()
-                    sys.stdout.write(read)
-                    LOG.info(read)
-                    if read.startswith('----- Start playing video -----'):
-                        emit('playing')
-                if fd == p.stderr.fileno():
-                    read = p.stderr.readline().decode()
-                    sys.stderr.write(read)
-                    LOG.error(read)
-
-            if p is None or p.poll() is not None:
-                break
+        wfc.tcast.play_video()
+        LOG.info(wfc.tcast.cast.media_controller.status)
+        emit('playing')
     else:
         is_ready()
 
@@ -186,14 +164,9 @@ def play():
 @socketio.on('stop')
 def stop():
     emit('stopping')
-    wfc_info.playing_process.terminate()
-    try:
-        wfc_info.playing_process.wait(10)
-    except TimeoutExpired:
-        wfc_info.playing_process.kill()
-        wfc_info.playing_process.wait(10)
-    wfc_info.playing_process = None
-    emit('stopped')
+    wfc.tcast.stop_server()
+    if wfc.tcast.server_thread is None:
+        emit('stopped')
 
 
 if __name__ == '__main__':
