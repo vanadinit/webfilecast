@@ -21,6 +21,7 @@ setup(
         'redis',
         'flask_socketio',
         'filetype>=1.0.0',
+        'rq',
     ],
     classifiers=[
         "Programming Language :: Python :: 3",

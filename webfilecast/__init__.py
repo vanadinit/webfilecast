@@ -8,7 +8,10 @@ from filetype import is_video
 from flask import Flask, send_from_directory
 from flask_socketio import SocketIO, emit
 from redis import Redis
-from terminalcast import FileMetadata, create_tmp_video_file, AudioMetadata, TerminalCast
+from rq import Queue
+from rq.command import send_stop_job_command
+from rq.job import Job
+from terminalcast import FileMetadata, create_tmp_video_file, AudioMetadata, TerminalCast, run_http_server
 
 from webfilecast.logger import init_logger
 
@@ -36,6 +39,7 @@ class WebfileCast:
         self.audio_stream: Optional[AudioMetadata] = None
         self.audio_ready = False
         self.tcast: Optional[TerminalCast] = None
+        self.job: Optional[Job] = None
 
     @property
     def file_metadata(self) -> FileMetadata:
@@ -51,7 +55,7 @@ class WebfileCast:
             print('Audio not ready')
             return False
 
-        if self.tcast is not None and self.tcast.server_thread:
+        if self.job is not None and self.job.get_status() == 'started':
             print('Already playing')
             return False
 
@@ -82,6 +86,7 @@ def update_redis_file_cache() -> dict:
 
 wfc = WebfileCast()
 update_redis_file_cache()
+queue = Queue(connection=redis)
 
 
 @app.route('/')
@@ -152,8 +157,14 @@ def play():
         emit('start_playing')
         wfc.tcast = TerminalCast(filepath=wfc.file_path, select_ip=False)
         LOG.info(wfc.tcast.cast.status)
+        wfc.job = queue.enqueue(run_http_server, kwargs={
+            'filepath': wfc.file_path,
+            'ip': wfc.tcast.ip,
+            'port': wfc.tcast.port,
+        })
+        LOG.info('Wait some time for server to start...')
+        sleep(5)
         LOG.info(wfc.tcast.get_video_url())
-        wfc.tcast.start_server()
         wfc.tcast.play_video()
         LOG.info(wfc.tcast.cast.media_controller.status)
         emit('playing')
@@ -163,9 +174,13 @@ def play():
 
 @socketio.on('stop')
 def stop():
+    if wfc.job is None:
+        LOG.warning('Nothing to stop.')
+        return
     emit('stopping')
-    wfc.tcast.stop_server()
-    if wfc.tcast.server_thread is None:
+    send_stop_job_command(connection=redis, job_id=wfc.job.get_id())
+    LOG.info(wfc.job.get_status())
+    if wfc.job.get_status() in ['finished', 'stopped', 'failed', 'cancelled']:
         emit('stopped')
 
 
