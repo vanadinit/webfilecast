@@ -10,6 +10,7 @@ from flask_socketio import SocketIO, emit
 from redis import Redis
 from rq import Queue
 from rq.command import send_stop_job_command
+from rq.exceptions import InvalidJobOperation
 from rq.job import Job
 from terminalcast import FileMetadata, create_tmp_video_file, AudioMetadata, TerminalCast, run_http_server
 
@@ -178,7 +179,11 @@ def stop():
         LOG.warning('Nothing to stop.')
         return
     emit('stopping')
-    send_stop_job_command(connection=redis, job_id=wfc.job.get_id())
+    try:
+        send_stop_job_command(connection=redis, job_id=wfc.job.get_id())
+        sleep(1)
+    except InvalidJobOperation as exc:
+        LOG.warning(str(exc))
     LOG.info(wfc.job.get_status())
     if wfc.job.get_status() in ['finished', 'stopped', 'failed', 'cancelled']:
         emit('stopped')
