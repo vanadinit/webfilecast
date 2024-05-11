@@ -51,7 +51,7 @@ class WebfileCast:
             print('Audio not ready')
             return False
 
-        if self.tcast.server_thread:
+        if self.tcast is not None and self.tcast.server_thread:
             print('Already playing')
             return False
 
