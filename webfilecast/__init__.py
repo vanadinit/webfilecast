@@ -149,11 +149,11 @@ def convert_for_audio_stream():
 @socketio.on('play')
 def play():
     if wfc.ready:
+        emit('start_playing')
         wfc.tcast = TerminalCast(filepath=wfc.file_path, select_ip=False)
         LOG.info(wfc.tcast.cast.status)
         LOG.info(wfc.tcast.get_video_url())
         wfc.tcast.start_server()
-        emit('start_playing')
         wfc.tcast.play_video()
         LOG.info(wfc.tcast.cast.media_controller.status)
         emit('playing')
