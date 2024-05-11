@@ -71,7 +71,7 @@ def update_redis_file_cache() -> dict:
             try:
                 if not is_video(path):
                     continue
-            except PermissionError:
+            except (PermissionError, OSError):
                 continue
             path_store_id = 'fm_' + md5(path.encode('utf-8')).hexdigest()
             if r_data := redis.get(path_store_id):
