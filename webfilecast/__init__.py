@@ -158,11 +158,16 @@ def play():
         emit('start_playing')
         wfc.tcast = TerminalCast(filepath=wfc.file_path, select_ip=False)
         LOG.info(wfc.tcast.cast.status)
-        wfc.job = queue.enqueue(run_http_server, kwargs={
-            'filepath': wfc.file_path,
-            'ip': wfc.tcast.ip,
-            'port': wfc.tcast.port,
-        })
+        wfc.job = queue.enqueue(
+            run_http_server,
+            kwargs={
+                'filepath': wfc.file_path,
+                'ip': wfc.tcast.ip,
+                'port': wfc.tcast.port,
+            },
+            job_timeout='5h',
+            failure_ttl='7d',
+        )
         LOG.info('Wait some time for server to start...')
         sleep(5)
         LOG.info(wfc.tcast.get_video_url())
