@@ -39,6 +39,7 @@ class WebfileCast:
         self.file_path: str = ''
         self.audio_stream: Optional[AudioMetadata] = None
         self.audio_ready = False
+        self.movie_files = {}
         self.tcast: Optional[TerminalCast] = None
         self.job: Optional[Job] = None
 
@@ -62,36 +63,38 @@ class WebfileCast:
 
         return True
 
-
-def update_redis_file_cache() -> dict:
-    movie_files = {}
-    for root, dirs, files in os.walk(MOVIE_DIRECTORY):
-        for file in files:
-            path = os.path.join(root, file)
-            try:
-                if not is_video(path):
+    def update_redis_file_cache(self, force: bool = False) -> dict:
+        if force:
+            self.movie_files = {}
+        for root, dirs, files in os.walk(MOVIE_DIRECTORY):
+            for file in files:
+                path = os.path.join(root, file)
+                if self.movie_files.get(path):
                     continue
-            except (PermissionError, OSError) as exc:
-                print(f'Skip {path}: {exc}')
-                continue
-            try:
-                emit('show_file_details', f'{len(movie_files)} files collected')
-            except RuntimeError:
-                pass
-            path_store_id = 'fm_' + md5(path.encode('utf-8')).hexdigest()
-            if r_data := redis.get(path_store_id):
-                movie_files[path] = pickle.loads(r_data)
-                continue
+                try:
+                    if not is_video(path):
+                        continue
+                except (PermissionError, OSError) as exc:
+                    print(f'Skip {path}: {exc}')
+                    continue
+                try:
+                    emit('show_file_details', f'{len(movie_files)} files collected')
+                except RuntimeError:
+                    pass
+                path_store_id = 'fm_' + md5(path.encode('utf-8')).hexdigest()
+                if r_data := redis.get(path_store_id):
+                    self.movie_files[path] = pickle.loads(r_data)
+                    continue
 
-            metadata = FileMetadata(path)
-            _ = metadata.ffoutput  # Just to have it called
-            redis.set(path_store_id, pickle.dumps(metadata))
-            movie_files[path] = metadata
-    return movie_files
+                metadata = FileMetadata(path)
+                _ = metadata.ffoutput  # Just to have it called
+                redis.set(path_store_id, pickle.dumps(metadata))
+                self.movie_files[path] = metadata
+        return self.movie_files
 
 
 wfc = WebfileCast()
-update_redis_file_cache()
+wfc.update_redis_file_cache()
 queue = Queue(connection=redis)
 
 
@@ -107,9 +110,9 @@ def is_ready():
 
 
 @socketio.on('get_files')
-def get_files():
+def get_files(force: bool = False):
     LOG.info('WS: get_files')
-    movie_files = update_redis_file_cache()
+    movie_files = wfc.update_redis_file_cache(force=force)
     emit('movie_files', sorted([
         (movie.filepath, movie.ffoutput['format']['tags'].get('title', movie.filepath.split('/')[-1]))
         for movie in movie_files.values()

@@ -14,8 +14,10 @@
 <h1>Webfilecast</h1>
 <div id="content">
     <p id="ws_status">Starting ...</p>
-    <button onclick="window.socket.emit('get_files')">Select file</button>
-    <div id="file_list"></div>
+    <div>
+        <button onclick="window.socket.emit('get_files', true)">Rebuild file list</button>
+    </div>
+    <div id="file_list" onload="window.socket.emit('get_files')"></div>
     <div id="file_details"></div>
     <div id="lang_list"></div>
     <button onclick="window.socket.emit('start_server')">Start server</button>
