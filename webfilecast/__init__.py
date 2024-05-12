@@ -78,7 +78,7 @@ class WebfileCast:
                     print(f'Skip {path}: {exc}')
                     continue
                 try:
-                    emit('show_file_details', f'{len(movie_files)} files collected')
+                    emit('show_file_details', f'{len(self.movie_files)} files collected')
                 except RuntimeError:
                     pass
                 path_store_id = 'fm_' + md5(path.encode('utf-8')).hexdigest()
