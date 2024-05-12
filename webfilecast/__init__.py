@@ -71,9 +71,13 @@ def update_redis_file_cache() -> dict:
             try:
                 if not is_video(path):
                     continue
-            except (PermissionError, OSError):
-                print(f'Skip {path}')
+            except (PermissionError, OSError) as exc:
+                print(f'Skip {path}: {exc}')
                 continue
+            try:
+                emit('show_file_details', f'{len(movie_files)} files collected')
+            except RuntimeError:
+                pass
             path_store_id = 'fm_' + md5(path.encode('utf-8')).hexdigest()
             if r_data := redis.get(path_store_id):
                 movie_files[path] = pickle.loads(r_data)
@@ -153,10 +157,10 @@ def convert_for_audio_stream():
     is_ready()
 
 
-@socketio.on('play')
-def play():
+@socketio.on('start_server')
+def start_server():
     if wfc.ready:
-        emit('start_playing')
+        emit('starting_server')
         wfc.tcast = TerminalCast(filepath=wfc.file_path, select_ip=False)
         LOG.info(wfc.tcast.cast.status)
         wfc.job = queue.enqueue(
@@ -172,15 +176,25 @@ def play():
         LOG.info('Wait some time for server to start...')
         sleep(5)
         LOG.info(wfc.tcast.get_video_url())
-        wfc.tcast.play_video()
-        LOG.info(wfc.tcast.cast.media_controller.status)
-        emit('playing')
+        emit('video_link', wfc.tcast.get_video_url())
     else:
         is_ready()
 
 
-@socketio.on('stop')
-def stop():
+@socketio.on('play')
+def play():
+    if wfc.job is None or wfc.job.get_status() != 'started':
+        start_server()
+    if wfc.job.get_status() == 'started':
+        wfc.tcast.play_video()
+        LOG.info(wfc.tcast.cast.media_controller.status)
+        emit('playing')
+    else:
+        LOG.error('Server has not been started successfully')
+
+
+@socketio.on('stop_server')
+def stop_server():
     if wfc.job is None:
         LOG.warning('Nothing to stop.')
         return

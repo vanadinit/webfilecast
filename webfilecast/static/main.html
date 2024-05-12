@@ -18,8 +18,10 @@
     <div id="file_list"></div>
     <div id="file_details"></div>
     <div id="lang_list"></div>
+    <button onclick="window.socket.emit('start_server')">Start server</button>
     <button onclick="window.socket.emit('play')">Play</button>
-    <button onclick="window.socket.emit('stop')">Stop</button>
+    <button onclick="window.socket.emit('stop_server')">Stop server</button>
+    <p id="video_link"></p>
     <p id="player_status"><span class="msg-info">Please select file</span></p>
     <div id="messages"></div>
 </div>

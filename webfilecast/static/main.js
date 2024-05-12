@@ -59,6 +59,16 @@ window.socket.on('lang_options', function (options) {
     window.socket.emit('select_lang', langListSelect.value);
 });
 
+window.socket.on('video_link', function (linkUrl) {
+    const fileDetails = document.getElementById('video_link');
+    fileDetails.innerHTML = `<a href="${linkUrl}" target="_blank">${linkUrl}</a>`;
+});
+
+window.socket.on('starting_server', function () {
+    const playerStatus = document.getElementById('player_status');
+    playerStatus.innerHTML = '<span class="msg-info">Starting Server ...</span>';
+})
+
 window.socket.on('start_playing', function () {
     const playerStatus = document.getElementById('player_status');
     playerStatus.innerHTML = '<span class="msg-success">Start Playing ...</span>';
