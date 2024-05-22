@@ -6,5 +6,5 @@ Web Frontend for Terminalcast
 - Only one discoverable Chromecast (selection not implemented yet)
 
 ## ENV Vars
-- CORS_ORIGIN
-- MOVIE_DIRECTORY
+- CORS_ORIGINS: semicolon separated list
+- MOVIE_DIRECTORY: path to movie storage
