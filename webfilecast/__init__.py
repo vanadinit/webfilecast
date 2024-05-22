@@ -70,6 +70,8 @@ class WebfileCast:
     def update_redis_file_cache(self, force: bool = False) -> dict:
         if force:
             self.movie_files = {}
+        elif pckl_movie_files := redis.get('wfc_movie_files'):
+            self.movie_files = pickle.loads(pckl_movie_files)
         for root, dirs, files in os.walk(MOVIE_DIRECTORY):
             for file in files:
                 path = os.path.join(root, file)
@@ -94,6 +96,7 @@ class WebfileCast:
                 _ = metadata.ffoutput  # Just to have it called
                 redis.set(path_store_id, pickle.dumps(metadata))
                 self.movie_files[path] = metadata
+        redis.set('wfc_movie_files', pickle.dumps(self.movie_files))
         return self.movie_files
 
 
