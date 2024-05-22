@@ -5,7 +5,7 @@ from time import sleep
 from typing import Optional
 
 from filetype import is_video
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, request
 from flask_socketio import SocketIO, emit
 from redis import Redis
 from rq import Queue
@@ -13,6 +13,7 @@ from rq.command import send_stop_job_command
 from rq.exceptions import InvalidJobOperation
 from rq.job import Job
 from terminalcast import FileMetadata, create_tmp_video_file, AudioMetadata, TerminalCast, run_http_server
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from webfilecast.logger import init_logger
 
@@ -27,6 +28,9 @@ socketio = SocketIO(
     engineio_logger=False,
     cors_allowed_origins=os.getenv('CORS_ORIGINS').split(';'),
 )
+
+# For having the correct client/host IP behind a reverse proxy
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_host=1)
 
 redis = Redis()
 
@@ -94,7 +98,6 @@ class WebfileCast:
 
 
 wfc = WebfileCast()
-wfc.update_redis_file_cache()
 queue = Queue(connection=redis)
 
 
@@ -164,7 +167,7 @@ def convert_for_audio_stream():
 def start_server():
     if wfc.ready:
         emit('starting_server')
-        wfc.tcast = TerminalCast(filepath=wfc.file_path, select_ip=False)
+        wfc.tcast = TerminalCast(filepath=wfc.file_path, select_ip=request.host)
         LOG.info(wfc.tcast.cast.status)
         wfc.job = queue.enqueue(
             run_http_server,
