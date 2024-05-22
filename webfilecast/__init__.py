@@ -101,6 +101,7 @@ class WebfileCast:
 
 
 wfc = WebfileCast()
+wfc.update_redis_file_cache()
 queue = Queue(connection=redis)
 
 
