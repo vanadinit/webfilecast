@@ -12,7 +12,9 @@ from rq import Queue
 from rq.command import send_stop_job_command
 from rq.exceptions import InvalidJobOperation
 from rq.job import Job
-from terminalcast import FileMetadata, create_tmp_video_file, AudioMetadata, TerminalCast, run_http_server
+from terminalcast import (
+    FileMetadata, create_tmp_video_file, AudioMetadata, TerminalCast, run_http_server, NoChromecastAvailable
+)
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from webfilecast.logger import init_logger
@@ -172,7 +174,6 @@ def start_server():
     if wfc.ready:
         emit('starting_server')
         wfc.tcast = TerminalCast(filepath=wfc.file_path, select_ip=request.host)
-        LOG.info(wfc.tcast.cast.status)
         wfc.job = queue.enqueue(
             run_http_server,
             kwargs={
@@ -187,6 +188,11 @@ def start_server():
         sleep(5)
         LOG.info(wfc.tcast.get_video_url())
         emit('video_link', wfc.tcast.get_video_url())
+        try:
+            LOG.info(wfc.tcast.cast.status)
+        except NoChromecastAvailable as exc:
+            LOG.warning(f'No Chromecast found: {exc}\n'
+                        ' The video might be available direct via URL anyway.')
     else:
         is_ready()
 
