@@ -12,9 +12,8 @@ from rq import Queue
 from rq.command import send_stop_job_command
 from rq.exceptions import InvalidJobOperation
 from rq.job import Job
-from terminalcast import (
-    FileMetadata, create_tmp_video_file, AudioMetadata, TerminalCast, run_http_server, NoChromecastAvailable
-)
+from terminalcast import FileMetadata, create_tmp_video_file, AudioMetadata, TerminalCast, run_http_server
+from terminalcast.tc import NoChromecastAvailable
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from webfilecast.logger import init_logger
