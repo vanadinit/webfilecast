@@ -24,7 +24,27 @@ body {
 h1 {
     color: var(--primary-color);
     margin-bottom: 20px;
+    display: flex;
+    align-items: center;
 }
+
+#ws_status_dot {
+    height: 12px;
+    width: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 10px;
+    background-color: var(--warning-color); /* Default: Connecting */
+}
+
+#ws_status_dot.connected {
+    background-color: var(--success-color);
+}
+
+#ws_status_dot.disconnected {
+    background-color: var(--error-color);
+}
+
 
 #content {
     width: 100%;
@@ -126,12 +146,6 @@ select {
 .msg-success { color: var(--success-color); }
 .msg-error { color: var(--error-color); }
 .msg-warning { color: var(--warning-color); }
-
-#ws_status {
-    font-style: italic;
-    color: #888;
-    margin-bottom: 10px;
-}
 
 #player_status {
     font-weight: bold;

@@ -2,21 +2,21 @@ window.socket = io.connect();
 window.currentVideoUrl = ''; // Global variable to store the video URL
 
 function websocketStatus() {
-    let timeoutCounter = 0;
-    const statusIndicator = document.getElementById('ws_status');
-    const wsConnectStatus = setInterval(function () {
-        if (window.socket.connected) {
-            statusIndicator.innerHTML = '<span class="msg-success">Connected</span>';
-            timeoutCounter = 0;
-        } else {
-            statusIndicator.innerHTML = `<span class="msg-error">Disconnected (${timeoutCounter})</span>`;
-            timeoutCounter++;
-        }
-        if (timeoutCounter > 60) {
-            statusIndicator.innerHTML = '<span class="msg-error">Disconnected (Please reload)</span>';
-            clearInterval(wsConnectStatus);
-        }
-    }, 1000);
+    const statusDot = document.getElementById('ws_status_dot');
+
+    // Initial state
+    statusDot.className = 'connecting';
+    statusDot.title = 'Connecting...';
+
+    window.socket.on('connect', () => {
+        statusDot.className = 'connected';
+        statusDot.title = 'Connected';
+    });
+
+    window.socket.on('disconnect', () => {
+        statusDot.className = 'disconnected';
+        statusDot.title = 'Disconnected';
+    });
 }
 
 function setPlaybackButtonsState(enabled) {

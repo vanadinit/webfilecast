@@ -15,10 +15,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
 </head>
 <body>
-    <h1>Webfilecast</h1>
+    <h1><span id="ws_status_dot"></span>Webfilecast</h1>
     <div id="content">
-        <div id="ws_status">Connecting...</div>
-
         <div class="list-container">
             <div id="file_list"></div>
             <button id="refresh_button" onclick="window.socket.emit('get_files', true)" title="Refresh List">🔄</button>
