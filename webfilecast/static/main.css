@@ -56,7 +56,34 @@ button:disabled {
     cursor: not-allowed;
 }
 
-#file_list, #lang_list {
+.action-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 20px 0;
+}
+
+.button-group + .button-group {
+    margin-left: 20px;
+}
+
+.list-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+#file_list {
+    flex-grow: 1;
+}
+
+#refresh_button {
+    flex-shrink: 0;
+    margin-left: 10px;
+    padding: 10px 15px; /* Adjust padding for icon button */
+}
+
+#lang_list {
     margin: 15px 0;
 }
 
@@ -104,16 +131,13 @@ select {
 
 #player_status {
     font-weight: bold;
-    margin: 10px 0;
-    padding: 10px;
-    background-color: #2c2c2c;
+    padding: 10px 15px;
+    background-color: #111; /* Darker background */
+    border: 1px solid #444;
     border-radius: 4px;
-    text-align: center;
-}
-
-#video_link {
-    word-break: break-all;
-    color: var(--secondary-color);
+    text-align: right;
+    flex-grow: 1;
+    margin-left: 20px;
 }
 
 /* Responsive adjustments */
@@ -122,8 +146,23 @@ select {
         padding: 10px;
     }
 
+    .action-bar {
+        flex-direction: column;
+    }
+
+    #player_status {
+        width: 100%;
+        margin-left: 0;
+        margin-top: 10px;
+        text-align: center;
+    }
+
     button {
         width: 100%;
         margin: 5px 0;
+    }
+
+    #refresh_button {
+        width: auto; /* Allow refresh button to be smaller */
     }
 }

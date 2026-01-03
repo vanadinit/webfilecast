@@ -75,7 +75,7 @@ class WebfileCast:
             self.movie_files = pickle.loads(pckl_movie_files)
 
         try:
-            emit('player_status_update', {'msg': 'Starting file scan...', 'type': 'info'})
+            emit('scan_started')
         except RuntimeError:
             pass
 
@@ -91,7 +91,7 @@ class WebfileCast:
                     LOG.warning(f'Skip {path}: {exc}')
                     continue
                 try:
-                    emit('player_status_update', {'msg': f'{len(self.movie_files)} files collected', 'type': 'info'})
+                    emit('scan_progress', {'count': len(self.movie_files)})
                 except RuntimeError:
                     pass
                 path_store_id = 'fm_' + md5(path.encode('utf-8')).hexdigest()
@@ -103,9 +103,9 @@ class WebfileCast:
                 _ = metadata.ffoutput  # Just to have it called
                 redis.set(path_store_id, pickle.dumps(metadata))
                 self.movie_files[path] = metadata
-        
+
         try:
-            emit('player_status_update', {'msg': f'Scan finished. {len(self.movie_files)} files found.', 'type': 'success'})
+            emit('scan_finished', {'count': len(self.movie_files)})
         except RuntimeError:
             pass
 
@@ -155,11 +155,13 @@ def select_file(filepath: str):
     LOG.info('WS: select_file')
     wfc.orig_file_path = wfc.file_path = filepath
     emit('show_file_details', wfc.file_metadata.details())
-    emit('lang_options', [
-        (stream_id, stream.title)
-        for stream_id, stream
-        in enumerate(wfc.file_metadata.audio_streams)
-    ])
+    
+    lang_options = []
+    for stream_id, stream in enumerate(wfc.file_metadata.audio_streams):
+        title = "Undefined" if stream.title == "und" else stream.title
+        lang_options.append((stream_id, title))
+        
+    emit('lang_options', lang_options)
     return 'OK, 200'
 
 
@@ -169,7 +171,9 @@ def select_lang(lang_id: str):
     wfc.audio_stream = wfc.file_metadata.audio_streams[int(lang_id)]
     if int(lang_id) != 0:
         wfc.audio_ready = False
-        _emit_status('Audio conversion required! <button onclick="window.socket.emit(\'convert_for_audio_stream\')">Convert</button>', 'warning')
+        _emit_status(
+            'Audio conversion required! <button onclick="window.socket.emit(\'convert_for_audio_stream\')">Convert</button>',
+            'warning')
     else:
         wfc.audio_ready = True
         is_ready()
@@ -221,14 +225,13 @@ def start_server():
 @socketio.on('play')
 def play():
     if wfc.job is None or wfc.job.get_status() != 'started':
-        start_server()
-    if wfc.job.get_status() == 'started':
-        wfc.tcast.play_video()
-        LOG.info(wfc.tcast.cast.media_controller.status)
-        _emit_status('Playing ...', 'success')
-    else:
-        LOG.error('Server has not been started successfully')
-        _emit_status('Server has not been started successfully', 'error')
+        LOG.error('Server is not running. Please start it first.')
+        _emit_status('Server not running. Please start it first.', 'error')
+        return
+
+    wfc.tcast.play_video()
+    LOG.info(wfc.tcast.cast.media_controller.status)
+    _emit_status('Playing ...', 'success')
 
 
 @socketio.on('stop_server')

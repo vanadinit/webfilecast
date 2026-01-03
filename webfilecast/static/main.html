@@ -19,26 +19,28 @@
     <div id="content">
         <div id="ws_status">Connecting...</div>
 
-        <div class="control-group">
-            <button onclick="window.socket.emit('get_files')">Select File</button>
-            <button onclick="window.socket.emit('get_files', true)">Refresh List</button>
+        <div class="list-container">
+            <div id="file_list"></div>
+            <button id="refresh_button" onclick="window.socket.emit('get_files', true)" title="Refresh List">🔄</button>
         </div>
 
-        <div id="file_list"></div>
-        <div id="file_details"></div>
+        <div id="file_details">Select a file to see details</div>
+
         <div id="lang_list"></div>
 
-        <div class="control-group">
-            <button onclick="window.socket.emit('start_server')">Start Server</button>
-            <button onclick="window.socket.emit('play')">Play on Chromecast</button>
-            <button onclick="window.socket.emit('stop_server')">Stop Server</button>
+        <div class="control-group action-bar">
+            <div class="button-group">
+                <button onclick="window.socket.emit('start_server')" title="Start Server">▶️</button>
+                <button onclick="window.socket.emit('stop_server')" title="Stop Server">⏹️</button>
+            </div>
+            <div class="button-group">
+                <button id="play_chromecast_button" onclick="window.socket.emit('play')" title="Start the server first" disabled>📺</button>
+                <button id="open_in_browser_button" title="Start the server first" disabled>🌐</button>
+            </div>
+            <div id="player_status">
+                <span class="msg-info">Please select a file to begin</span>
+            </div>
         </div>
-
-        <div id="player_status">
-            <span class="msg-info">Please select a file to begin</span>
-        </div>
-
-        <p id="video_link"></p>
 
         <div id="messages"></div>
     </div>
