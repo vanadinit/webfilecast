@@ -155,7 +155,7 @@ def get_files(force: bool = False):
     
     # Prepare list for sorting
     file_list = [
-        (movie.filepath, movie.ffoutput['format']['tags'].get('title', movie.filepath.split('/')[-1]))
+        (movie.filepath, movie.ffoutput['format'].get('tags', {}).get('title', movie.filepath.split('/')[-1]))
         for movie in movie_files.values()
     ]
     
