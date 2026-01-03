@@ -55,15 +55,15 @@ class WebfileCast:
     @property
     def ready(self) -> bool:
         if not self.file_path:
-            print('No file selected')
+            LOG.warning('No file selected')
             return False
 
         if not self.audio_ready:
-            print('Audio not ready')
+            LOG.warning('Audio not ready')
             return False
 
         if self.job is not None and self.job.get_status() == 'started':
-            print('Already playing')
+            LOG.warning('Already playing')
             return False
 
         return True
@@ -73,6 +73,12 @@ class WebfileCast:
             self.movie_files = {}
         elif pckl_movie_files := redis.get('wfc_movie_files'):
             self.movie_files = pickle.loads(pckl_movie_files)
+
+        try:
+            emit('player_status_update', {'msg': 'Starting file scan...', 'type': 'info'})
+        except RuntimeError:
+            pass
+
         for root, dirs, files in os.walk(MOVIE_DIRECTORY):
             for file in files:
                 path = os.path.join(root, file)
@@ -82,10 +88,10 @@ class WebfileCast:
                     if not is_video(path):
                         continue
                 except (PermissionError, OSError) as exc:
-                    print(f'Skip {path}: {exc}')
+                    LOG.warning(f'Skip {path}: {exc}')
                     continue
                 try:
-                    emit('show_file_details', f'{len(self.movie_files)} files collected')
+                    emit('player_status_update', {'msg': f'{len(self.movie_files)} files collected', 'type': 'info'})
                 except RuntimeError:
                     pass
                 path_store_id = 'fm_' + md5(path.encode('utf-8')).hexdigest()
@@ -97,6 +103,12 @@ class WebfileCast:
                 _ = metadata.ffoutput  # Just to have it called
                 redis.set(path_store_id, pickle.dumps(metadata))
                 self.movie_files[path] = metadata
+        
+        try:
+            emit('player_status_update', {'msg': f'Scan finished. {len(self.movie_files)} files found.', 'type': 'success'})
+        except RuntimeError:
+            pass
+
         redis.set('wfc_movie_files', pickle.dumps(self.movie_files))
         return self.movie_files
 
@@ -111,9 +123,19 @@ def main():
     return send_from_directory(directory='static', path='main.html')
 
 
+def _emit_status(msg: str, msg_type: str):
+    try:
+        emit('player_status_update', {'msg': msg, 'type': msg_type})
+    except RuntimeError as e:
+        LOG.warning(f"Could not emit status: {e}")
+
+
 @socketio.on('is_ready')
 def is_ready():
-    emit('ready', wfc.ready)
+    if wfc.ready:
+        _emit_status('Ready to play', 'success')
+    else:
+        _emit_status('Player not ready', 'warning')
     return 'OK, 200'
 
 
@@ -138,7 +160,6 @@ def select_file(filepath: str):
         for stream_id, stream
         in enumerate(wfc.file_metadata.audio_streams)
     ])
-
     return 'OK, 200'
 
 
@@ -148,7 +169,7 @@ def select_lang(lang_id: str):
     wfc.audio_stream = wfc.file_metadata.audio_streams[int(lang_id)]
     if int(lang_id) != 0:
         wfc.audio_ready = False
-        emit('audio_conversion_required')
+        _emit_status('Audio conversion required! <button onclick="window.socket.emit(\'convert_for_audio_stream\')">Convert</button>', 'warning')
     else:
         wfc.audio_ready = True
         is_ready()
@@ -157,13 +178,13 @@ def select_lang(lang_id: str):
 @socketio.on('convert_for_audio_stream')
 def convert_for_audio_stream():
     LOG.info('WS: convert audio stream')
-    emit('audio_conversion_started')
+    _emit_status('Audio conversion started...', 'info')
     wfc.file_path = create_tmp_video_file(
         filepath=wfc.file_path,
-        audio_index=wfc.audio_stream.index[-1:],
+        audio_index=int(wfc.audio_stream.index.split(':')[-1]),
     )
     wfc.audio_ready = True
-    emit('audio_conversion_finished')
+    _emit_status('Audio conversion finished', 'success')
     sleep(2)
     is_ready()
 
@@ -171,8 +192,8 @@ def convert_for_audio_stream():
 @socketio.on('start_server')
 def start_server():
     if wfc.ready:
-        emit('starting_server')
-        wfc.tcast = TerminalCast(filepath=wfc.file_path, select_ip=request.host)
+        _emit_status('Starting Server ...', 'info')
+        wfc.tcast = TerminalCast(filepath=wfc.file_path, select_ip=request.host.split(':')[0])
         wfc.job = queue.enqueue(
             run_http_server,
             kwargs={
@@ -189,9 +210,10 @@ def start_server():
         emit('video_link', wfc.tcast.get_video_url())
         try:
             LOG.info(wfc.tcast.cast.status)
+            _emit_status('Server started. Ready to play.', 'success')
         except NoChromecastAvailable as exc:
-            LOG.warning(f'No Chromecast found: {exc}\n'
-                        ' The video might be available direct via URL anyway.')
+            LOG.warning(f'No Chromecast found: {exc}\n The video might be available direct via URL anyway.')
+            _emit_status('No Chromecast found. Video might be available via URL.', 'warning')
     else:
         is_ready()
 
@@ -203,9 +225,10 @@ def play():
     if wfc.job.get_status() == 'started':
         wfc.tcast.play_video()
         LOG.info(wfc.tcast.cast.media_controller.status)
-        emit('playing')
+        _emit_status('Playing ...', 'success')
     else:
         LOG.error('Server has not been started successfully')
+        _emit_status('Server has not been started successfully', 'error')
 
 
 @socketio.on('stop_server')
@@ -213,7 +236,7 @@ def stop_server():
     if wfc.job is None:
         LOG.warning('Nothing to stop.')
         return
-    emit('stopping')
+    _emit_status('Stopping ...', 'info')
     try:
         send_stop_job_command(connection=redis, job_id=wfc.job.get_id())
         sleep(1)
@@ -221,7 +244,7 @@ def stop_server():
         LOG.warning(str(exc))
     LOG.info(wfc.job.get_status())
     if wfc.job.get_status() in ['finished', 'stopped', 'failed', 'cancelled']:
-        emit('stopped')
+        _emit_status('Stopped', 'error')
 
 
 if __name__ == '__main__':

@@ -1,5 +1,8 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Webfilecast</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
             integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
@@ -9,24 +12,35 @@
             crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script type="text/javascript" src="static/main.js"></script>
     <link rel="stylesheet" href="static/main.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
 </head>
 <body>
-<h1>Webfilecast</h1>
-<div id="content">
-    <p id="ws_status">Starting ...</p>
-    <div>
-        <button onclick="window.socket.emit('get_files')">Select file</button>
-        <button onclick="window.socket.emit('get_files', true)">Rebuild file list</button>
+    <h1>Webfilecast</h1>
+    <div id="content">
+        <div id="ws_status">Connecting...</div>
+
+        <div class="control-group">
+            <button onclick="window.socket.emit('get_files')">Select File</button>
+            <button onclick="window.socket.emit('get_files', true)">Refresh List</button>
+        </div>
+
+        <div id="file_list"></div>
+        <div id="file_details"></div>
+        <div id="lang_list"></div>
+
+        <div class="control-group">
+            <button onclick="window.socket.emit('start_server')">Start Server</button>
+            <button onclick="window.socket.emit('play')">Play on Chromecast</button>
+            <button onclick="window.socket.emit('stop_server')">Stop Server</button>
+        </div>
+
+        <div id="player_status">
+            <span class="msg-info">Please select a file to begin</span>
+        </div>
+
+        <p id="video_link"></p>
+
+        <div id="messages"></div>
     </div>
-    <div id="file_list"></div>
-    <div id="file_details"></div>
-    <div id="lang_list"></div>
-    <button onclick="window.socket.emit('start_server')">Start server</button>
-    <button onclick="window.socket.emit('play')">Play</button>
-    <button onclick="window.socket.emit('stop_server')">Stop server</button>
-    <p id="video_link"></p>
-    <p id="player_status"><span class="msg-info">Please select file</span></p>
-    <div id="messages"></div>
-</div>
 </body>
 </html>
