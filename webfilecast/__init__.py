@@ -1,5 +1,6 @@
 import os
 import pickle
+import re
 from hashlib import md5
 from time import sleep
 from typing import Optional
@@ -36,6 +37,11 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_host=1)
 redis = Redis()
 
 LOG = init_logger('webfilecast')
+
+
+def natural_sort_key(s):
+    """Key for natural sorting."""
+    return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
 
 
 class WebfileCast:
@@ -146,10 +152,17 @@ def is_ready():
 def get_files(force: bool = False):
     LOG.info('WS: get_files')
     movie_files = wfc.update_redis_file_cache(force=force)
-    emit('movie_files', sorted([
+    
+    # Prepare list for sorting
+    file_list = [
         (movie.filepath, movie.ffoutput['format']['tags'].get('title', movie.filepath.split('/')[-1]))
         for movie in movie_files.values()
-    ]))
+    ]
+    
+    # Sort naturally by the display name (the second element in the tuple)
+    sorted_files = sorted(file_list, key=lambda item: natural_sort_key(item[1]))
+    
+    emit('movie_files', sorted_files)
     return 'OK, 200'
 
 

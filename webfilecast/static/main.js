@@ -196,10 +196,28 @@ $(document).ready(function () {
     });
 
     searchInput.addEventListener('input', () => {
-        const searchTerm = searchInput.value.toLowerCase();
-        const filteredFiles = window.movieFiles.filter(file =>
-            file[1].toLowerCase().includes(searchTerm)
-        );
+        const rawSearch = searchInput.value.toLowerCase();
+
+        // Regex to split by spaces, but keep quoted phrases together
+        const searchParts = rawSearch.match(/".*?"|[^"\s]+/g) || [];
+
+        if (searchParts.length === 0) {
+            renderFileList(window.movieFiles);
+            return;
+        }
+
+        const filteredFiles = window.movieFiles.filter(file => {
+            const fileName = file[1].toLowerCase();
+            return searchParts.every(part => {
+                if (part.startsWith('"') && part.endsWith('"')) {
+                    // Exact phrase match
+                    return fileName.includes(part.substring(1, part.length - 1));
+                } else {
+                    // Simple term match
+                    return fileName.includes(part);
+                }
+            });
+        });
         renderFileList(filteredFiles);
     });
 
