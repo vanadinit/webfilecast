@@ -2,6 +2,14 @@
 
 All notable changes to this project will be in this document.
 
+## [1.1.1] - 2026-01-03
+
+### Added
+- Added a GitHub workflow (`python-publish.yml`) to automatically build and publish the package to PyPI on new releases.
+
+### Fixed
+- Prevented a `KeyError` when processing video files that have no `tags` in their metadata.
+
 ## [1.1.0] - 2026-01-03
 
 ### Added
