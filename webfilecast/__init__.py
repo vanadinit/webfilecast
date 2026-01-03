@@ -13,8 +13,9 @@ from rq import Queue
 from rq.command import send_stop_job_command
 from rq.exceptions import InvalidJobOperation
 from rq.job import Job
-from terminalcast import FileMetadata, create_tmp_video_file, AudioMetadata, TerminalCast, run_http_server
-from terminalcast.tc import NoChromecastAvailable
+from terminalcast import (
+    FileMetadata, create_tmp_video_file, AudioMetadata, TerminalCast, NoChromecastAvailable, run_http_server
+)
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from webfilecast.logger import init_logger
@@ -152,16 +153,16 @@ def is_ready():
 def get_files(force: bool = False):
     LOG.info('WS: get_files')
     movie_files = wfc.update_redis_file_cache(force=force)
-    
+
     # Prepare list for sorting
     file_list = [
         (movie.filepath, movie.ffoutput['format'].get('tags', {}).get('title', movie.filepath.split('/')[-1]))
         for movie in movie_files.values()
     ]
-    
+
     # Sort naturally by the display name (the second element in the tuple)
     sorted_files = sorted(file_list, key=lambda item: natural_sort_key(item[1]))
-    
+
     emit('movie_files', sorted_files)
     return 'OK, 200'
 
@@ -170,15 +171,15 @@ def get_files(force: bool = False):
 def select_file(filepath: str):
     LOG.info('WS: select_file')
     wfc.orig_file_path = wfc.file_path = filepath
-    wfc.audio_ready = False # Reset audio readiness on new file
+    wfc.audio_ready = False  # Reset audio readiness on new file
     _emit_status('File selected. Please select audio.', 'info', ready=False)
     emit('show_file_details', wfc.file_metadata.details())
-    
+
     lang_options = []
     for stream_id, stream in enumerate(wfc.file_metadata.audio_streams):
         title = "Undefined" if stream.title == "und" else stream.title
         lang_options.append((stream_id, title))
-        
+
     emit('lang_options', lang_options)
     return 'OK, 200'
 
@@ -200,15 +201,30 @@ def select_lang(lang_id: str):
 @socketio.on('convert_for_audio_stream')
 def convert_for_audio_stream():
     LOG.info('WS: convert audio stream')
+
+    def progress_callback(progress: float):
+        try:
+            emit('conversion_progress', {'progress': round(progress, 2)})
+        except RuntimeError:
+            pass
+
     _emit_status('Audio conversion started...', 'info', ready=False)
-    wfc.file_path = create_tmp_video_file(
+    new_file_path = create_tmp_video_file(
         filepath=wfc.file_path,
-        audio_index=int(wfc.audio_stream.index.split(':')[-1]),
+        audio_index=wfc.audio_stream.index[-1:],
+        duration=float(wfc.file_metadata.ffoutput['format']['duration']),
+        progress_callback=progress_callback,
     )
-    wfc.audio_ready = True
-    _emit_status('Audio conversion finished', 'success', ready=True)
-    sleep(2)
-    is_ready()
+
+    if os.path.exists(new_file_path):
+        wfc.file_path = new_file_path
+        wfc.audio_ready = True
+        _emit_status('Audio conversion finished', 'success', ready=True)
+        sleep(2)
+        is_ready()
+    else:
+        LOG.error(f"Conversion failed. File not found: {new_file_path}")
+        _emit_status('Conversion failed. Please check logs.', 'error', ready=False)
 
 
 @socketio.on('start_server')

@@ -37,13 +37,13 @@ pip install "webfilecast[deployment]"
 2.  **Run the application:**
 
     **For Development:**
-    A simple development server can be started using the `webfilecast` command. **Note:** Real-time feedback during the initial file scan may not work correctly with this server.
+    A simple development server can be started using the `flask` command. To enable automatic reloading on code changes, use the `--debug` flag.
     ```sh
     # Example
     export MOVIE_DIRECTORY="/path/to/your/videos"
     export CORS_ORIGINS="http://127.0.0.1:5000"
     
-    flask --app webfilecast run
+    flask --app webfilecast --debug run
     ```
     
     **For Production (Recommended):**

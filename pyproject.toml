@@ -18,7 +18,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
 ]
 dependencies = [
-    "terminalcast>=1.1.0",
+    "terminalcast>=1.2.2",
     "Flask",
     "redis",
     "flask_socketio",

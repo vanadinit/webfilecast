@@ -185,14 +185,35 @@ select {
 
 #player_status {
     font-weight: bold;
-    padding: 10px 15px;
-    background-color: #111; /* Darker background */
+    background-color: #111;
     border: 1px solid #444;
     border-radius: 4px;
     text-align: right;
     flex-grow: 1;
     margin-left: 20px;
+    position: relative;
+    overflow: hidden;
 }
+
+#player_status_text {
+    position: relative;
+    z-index: 2;
+    padding: 10px 15px;
+    display: block;
+}
+
+#player_status_progress {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 0; /* Initially hidden */
+    background-color: var(--primary-color);
+    opacity: 0.3;
+    transition: width 0.2s ease-out;
+    z-index: 1;
+}
+
 
 /* Responsive adjustments */
 @media (max-width: 600px) {

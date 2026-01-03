@@ -138,8 +138,12 @@ window.socket.on('video_link', function (linkUrl) {
 });
 
 window.socket.on('player_status_update', function (status) {
-    const playerStatus = document.getElementById('player_status');
-    playerStatus.innerHTML = `<span class="msg-${status.type}">${status.msg}</span>`;
+    const statusText = document.getElementById('player_status_text');
+    const progressBar = document.getElementById('player_status_progress');
+
+    statusText.className = `msg-${status.type}`;
+    statusText.innerHTML = status.msg;
+    progressBar.style.width = '0%'; // Reset progress on new status
 
     if (status.ready !== undefined) {
         document.getElementById('start_server_button').disabled = !status.ready;
@@ -149,6 +153,15 @@ window.socket.on('player_status_update', function (status) {
         setPlaybackButtonsState(false);
         window.currentVideoUrl = '';
     }
+});
+
+window.socket.on('conversion_progress', function (data) {
+    const statusText = document.getElementById('player_status_text');
+    const progressBar = document.getElementById('player_status_progress');
+
+    statusText.className = 'msg-info';
+    statusText.textContent = `Converting: ${data.progress}%`;
+    progressBar.style.width = `${data.progress}%`;
 });
 
 window.socket.on('scan_started', function () {
@@ -169,8 +182,9 @@ window.socket.on('scan_finished', function (data) {
     refreshButton.disabled = false;
     refreshButton.innerText = '🔄';
     refreshButton.title = 'Refresh List';
-    const playerStatus = document.getElementById('player_status');
-    playerStatus.innerHTML = `<span class="msg-success">Scan finished. ${data.count} files found.</span>`;
+    const statusText = document.getElementById('player_status_text');
+    statusText.className = 'msg-success';
+    statusText.textContent = `Scan finished. ${data.count} files found.`;
 });
 
 window.socket.on('logmessage', function (msg) {
