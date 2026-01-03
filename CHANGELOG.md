@@ -2,7 +2,7 @@
 
 All notable changes to this project will be in this document.
 
-## [1.1.1/1.1.2] - 2026-01-03
+## [1.1.1/1.1.2/1.1.3] - 2026-01-03
 
 ### Added
 - Added a GitHub workflow (`python-publish.yml`) to automatically build and publish the package to PyPI on new releases.

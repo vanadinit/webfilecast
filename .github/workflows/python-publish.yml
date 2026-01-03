@@ -28,7 +28,7 @@ jobs:
     - name: Build package
       run: python -m build
     - name: Publish package to PyPI
-      uses: pypa/gh-action-pypi-publish@v1
+      uses: pypa/gh-action-pypi-publish@release/v1
       with:
         # The following settings are mandatory for trusted publishing
         attestations: true
