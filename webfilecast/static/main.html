@@ -30,7 +30,7 @@
 
         <div class="control-group action-bar">
             <div class="button-group">
-                <button onclick="window.socket.emit('start_server')" title="Start Server">▶️</button>
+                <button id="start_server_button" onclick="window.socket.emit('start_server')" title="Start Server" disabled>▶️</button>
                 <button onclick="window.socket.emit('stop_server')" title="Stop Server">⏹️</button>
             </div>
             <div class="button-group">

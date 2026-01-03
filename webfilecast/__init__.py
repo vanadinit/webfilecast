@@ -123,9 +123,12 @@ def main():
     return send_from_directory(directory='static', path='main.html')
 
 
-def _emit_status(msg: str, msg_type: str):
+def _emit_status(msg: str, msg_type: str, ready: bool = None):
+    payload = {'msg': msg, 'type': msg_type}
+    if ready is not None:
+        payload['ready'] = ready
     try:
-        emit('player_status_update', {'msg': msg, 'type': msg_type})
+        emit('player_status_update', payload)
     except RuntimeError as e:
         LOG.warning(f"Could not emit status: {e}")
 
@@ -133,9 +136,9 @@ def _emit_status(msg: str, msg_type: str):
 @socketio.on('is_ready')
 def is_ready():
     if wfc.ready:
-        _emit_status('Ready to play', 'success')
+        _emit_status('Ready to play', 'success', ready=True)
     else:
-        _emit_status('Player not ready', 'warning')
+        _emit_status('Player not ready', 'warning', ready=False)
     return 'OK, 200'
 
 
@@ -154,6 +157,8 @@ def get_files(force: bool = False):
 def select_file(filepath: str):
     LOG.info('WS: select_file')
     wfc.orig_file_path = wfc.file_path = filepath
+    wfc.audio_ready = False # Reset audio readiness on new file
+    _emit_status('File selected. Please select audio.', 'info', ready=False)
     emit('show_file_details', wfc.file_metadata.details())
     
     lang_options = []
@@ -173,7 +178,7 @@ def select_lang(lang_id: str):
         wfc.audio_ready = False
         _emit_status(
             'Audio conversion required! <button onclick="window.socket.emit(\'convert_for_audio_stream\')">Convert</button>',
-            'warning')
+            'warning', ready=False)
     else:
         wfc.audio_ready = True
         is_ready()
@@ -182,13 +187,13 @@ def select_lang(lang_id: str):
 @socketio.on('convert_for_audio_stream')
 def convert_for_audio_stream():
     LOG.info('WS: convert audio stream')
-    _emit_status('Audio conversion started...', 'info')
+    _emit_status('Audio conversion started...', 'info', ready=False)
     wfc.file_path = create_tmp_video_file(
         filepath=wfc.file_path,
         audio_index=int(wfc.audio_stream.index.split(':')[-1]),
     )
     wfc.audio_ready = True
-    _emit_status('Audio conversion finished', 'success')
+    _emit_status('Audio conversion finished', 'success', ready=True)
     sleep(2)
     is_ready()
 
@@ -196,7 +201,7 @@ def convert_for_audio_stream():
 @socketio.on('start_server')
 def start_server():
     if wfc.ready:
-        _emit_status('Starting Server ...', 'info')
+        _emit_status('Starting Server ...', 'info', ready=False)
         wfc.tcast = TerminalCast(filepath=wfc.file_path, select_ip=request.host.split(':')[0])
         wfc.job = queue.enqueue(
             run_http_server,
@@ -214,10 +219,10 @@ def start_server():
         emit('video_link', wfc.tcast.get_video_url())
         try:
             LOG.info(wfc.tcast.cast.status)
-            _emit_status('Server started. Ready to play.', 'success')
+            _emit_status('Server started. Ready to play.', 'success', ready=False)
         except NoChromecastAvailable as exc:
             LOG.warning(f'No Chromecast found: {exc}\n The video might be available direct via URL anyway.')
-            _emit_status('No Chromecast found. Video might be available via URL.', 'warning')
+            _emit_status('No Chromecast found. Video might be available via URL.', 'warning', ready=False)
     else:
         is_ready()
 
@@ -226,12 +231,12 @@ def start_server():
 def play():
     if wfc.job is None or wfc.job.get_status() != 'started':
         LOG.error('Server is not running. Please start it first.')
-        _emit_status('Server not running. Please start it first.', 'error')
+        _emit_status('Server not running. Please start it first.', 'error', ready=wfc.ready)
         return
 
     wfc.tcast.play_video()
     LOG.info(wfc.tcast.cast.media_controller.status)
-    _emit_status('Playing ...', 'success')
+    _emit_status('Playing ...', 'success', ready=False)
 
 
 @socketio.on('stop_server')
@@ -239,7 +244,7 @@ def stop_server():
     if wfc.job is None:
         LOG.warning('Nothing to stop.')
         return
-    _emit_status('Stopping ...', 'info')
+    _emit_status('Stopping ...', 'info', ready=False)
     try:
         send_stop_job_command(connection=redis, job_id=wfc.job.get_id())
         sleep(1)
@@ -247,7 +252,7 @@ def stop_server():
         LOG.warning(str(exc))
     LOG.info(wfc.job.get_status())
     if wfc.job.get_status() in ['finished', 'stopped', 'failed', 'cancelled']:
-        _emit_status('Stopped', 'error')
+        _emit_status('Stopped', 'error', ready=wfc.ready)
 
 
 if __name__ == '__main__':
