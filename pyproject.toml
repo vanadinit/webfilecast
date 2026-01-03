@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "webfilecast"
-version = "1.0.0"
+version = "1.1.0"
 description = "Webfrontend to cast local videos to your chromecast"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -28,3 +28,9 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/vanadinit/webfilecast"
+
+[project.scripts]
+webfilecast = "webfilecast:app"
+
+[project.optional-dependencies]
+deployment = ["gunicorn", "eventlet"]
