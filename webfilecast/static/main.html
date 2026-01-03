@@ -18,7 +18,10 @@
     <h1><span id="ws_status_dot"></span>Webfilecast</h1>
     <div id="content">
         <div class="list-container">
-            <div id="file_list"></div>
+            <div id="file_search_container">
+                <input type="text" id="file_search_input" placeholder="Search for a file...">
+                <div id="file_list_dropdown"></div>
+            </div>
             <button id="refresh_button" onclick="window.socket.emit('get_files', true)" title="Refresh List">🔄</button>
         </div>
 

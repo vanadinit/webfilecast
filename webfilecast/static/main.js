@@ -1,5 +1,6 @@
 window.socket = io.connect();
 window.currentVideoUrl = ''; // Global variable to store the video URL
+window.movieFiles = []; // Global variable to store the full movie list
 
 function websocketStatus() {
     const statusDot = document.getElementById('ws_status_dot');
@@ -40,6 +41,32 @@ function setPlaybackButtonsState(enabled) {
     }
 }
 
+function renderFileList(filteredFiles) {
+    const dropdown = document.getElementById('file_list_dropdown');
+    dropdown.innerHTML = '';
+
+    if (filteredFiles.length === 0) {
+        const noResult = document.createElement('div');
+        noResult.textContent = 'No files found';
+        noResult.style.pointerEvents = 'none';
+        dropdown.appendChild(noResult);
+        return;
+    }
+
+    filteredFiles.forEach(file => {
+        const item = document.createElement('div');
+        item.textContent = file[1]; // Display name
+        item.dataset.value = file[0]; // Store filepath
+        item.addEventListener('click', () => {
+            document.getElementById('file_search_input').value = file[1];
+            dropdown.style.display = 'none';
+            window.socket.emit('select_file', file[0]);
+        });
+        dropdown.appendChild(item);
+    });
+}
+
+
 window.socket.on('connect', function() {
     console.log('Connected to server, getting file list.');
     window.socket.emit('get_files');
@@ -47,35 +74,9 @@ window.socket.on('connect', function() {
 
 window.socket.on('movie_files', function (filelist) {
     console.log('Got movie file list');
-    const fileListElem = document.getElementById('file_list');
-    const fileListSelect = document.createElement('select');
-    fileListSelect.addEventListener('change', function () {
-        if (this.value) { // Don't send event for placeholder
-            window.socket.emit('select_file', this.value);
-        }
-    });
-
-    const placeholder = document.createElement("option");
-    placeholder.innerHTML = "Select a file";
-    placeholder.value = ""; // Use empty value for placeholder
-    placeholder.disabled = true;
-    placeholder.selected = true;
-    fileListSelect.appendChild(placeholder);
-
-    if (filelist.length > 0) {
-        for (let i = 0; i < filelist.length; i++) {
-            var opt = document.createElement("option");
-            opt.value = filelist[i][0];
-            opt.innerHTML = filelist[i][1];
-            fileListSelect.appendChild(opt);
-        };
-    } else {
-        placeholder.innerHTML = "No movie files found";
-    }
-
-    fileListElem.innerHTML = '';
-    fileListElem.appendChild(fileListSelect);
-})
+    window.movieFiles = filelist;
+    renderFileList(window.movieFiles); // Initially render the full list
+});
 
 window.socket.on('show_file_details', function (file_details) {
     const fileDetails = document.getElementById('file_details');
@@ -185,4 +186,27 @@ window.socket.on('logmessage', function (msg) {
 $(document).ready(function () {
     websocketStatus();
     setPlaybackButtonsState(false); // Initially disable playback buttons
+
+    const searchInput = document.getElementById('file_search_input');
+    const dropdown = document.getElementById('file_list_dropdown');
+
+    searchInput.addEventListener('focus', () => {
+        renderFileList(window.movieFiles);
+        dropdown.style.display = 'block';
+    });
+
+    searchInput.addEventListener('input', () => {
+        const searchTerm = searchInput.value.toLowerCase();
+        const filteredFiles = window.movieFiles.filter(file =>
+            file[1].toLowerCase().includes(searchTerm)
+        );
+        renderFileList(filteredFiles);
+    });
+
+    // Hide dropdown if clicked outside
+    document.addEventListener('click', (event) => {
+        if (!document.getElementById('file_search_container').contains(event.target)) {
+            dropdown.style.display = 'none';
+        }
+    });
 });
