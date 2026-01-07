@@ -6,16 +6,10 @@ from time import sleep
 from typing import Optional
 
 from filetype import is_video
-from flask import Flask, send_from_directory, request
+from flask import Flask, send_from_directory, request, send_file, url_for
 from flask_socketio import SocketIO, emit
 from redis import Redis
-from rq import Queue
-from rq.command import send_stop_job_command
-from rq.exceptions import InvalidJobOperation
-from rq.job import Job
-from terminalcast import (
-    FileMetadata, create_tmp_video_file, AudioMetadata, TerminalCast, NoChromecastAvailable, run_http_server
-)
+from terminalcast import FileMetadata, create_tmp_video_file, AudioMetadata, TerminalCast, NoChromecastAvailable
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from webfilecast.logger import init_logger
@@ -53,7 +47,6 @@ class WebfileCast:
         self.audio_ready = False
         self.movie_files = {}
         self.tcast: Optional[TerminalCast] = None
-        self.job: Optional[Job] = None
 
     @property
     def file_metadata(self) -> FileMetadata:
@@ -67,10 +60,6 @@ class WebfileCast:
 
         if not self.audio_ready:
             LOG.warning('Audio not ready')
-            return False
-
-        if self.job is not None and self.job.get_status() == 'started':
-            LOG.warning('Already playing')
             return False
 
         return True
@@ -122,12 +111,18 @@ class WebfileCast:
 
 wfc = WebfileCast()
 wfc.update_redis_file_cache()
-queue = Queue(connection=redis)
 
 
 @app.route('/')
 def main():
     return send_from_directory(directory='static', path='main.html')
+
+
+@app.route('/video')
+def video():
+    if not wfc.file_path or not os.path.exists(wfc.file_path):
+        return "No video selected or file not found", 404
+    return send_file(wfc.file_path, conditional=True)
 
 
 def _emit_status(msg: str, msg_type: str, ready: bool = None):
@@ -231,24 +226,17 @@ def convert_for_audio_stream():
 def start_server():
     if wfc.ready:
         _emit_status('Starting Server ...', 'info', ready=False)
-        wfc.tcast = TerminalCast(filepath=wfc.file_path, select_ip=request.host.split(':')[0])
-        wfc.job = queue.enqueue(
-            run_http_server,
-            kwargs={
-                'filepath': wfc.file_path,
-                'ip': wfc.tcast.ip,
-                'port': wfc.tcast.port,
-            },
-            job_timeout='5h',
-            failure_ttl='7d',
-        )
-        LOG.info('Wait some time for server to start...')
-        sleep(5)
-        LOG.info(wfc.tcast.get_video_url())
-        emit('video_link', wfc.tcast.get_video_url())
+
+        video_url = url_for('video', _external=True)
+        wfc.tcast = TerminalCast(filepath=wfc.file_path, video_url=video_url, select_ip=False)
+
+        LOG.info(f'Video URL: {video_url}')
+        emit('video_link', video_url)
+
         try:
+            # We just check if we can connect to a Chromecast
             LOG.info(wfc.tcast.cast.status)
-            _emit_status('Server started. Ready to play.', 'success', ready=False)
+            _emit_status('Server ready. Ready to play.', 'success', ready=False)
         except NoChromecastAvailable as exc:
             LOG.warning(f'No Chromecast found: {exc}\n The video might be available direct via URL anyway.')
             _emit_status('No Chromecast found. Video might be available via URL.', 'warning', ready=False)
@@ -258,9 +246,10 @@ def start_server():
 
 @socketio.on('play')
 def play():
-    if wfc.job is None or wfc.job.get_status() != 'started':
-        LOG.error('Server is not running. Please start it first.')
-        _emit_status('Server not running. Please start it first.', 'error', ready=wfc.ready)
+    # We don't check for job status anymore, just if tcast is initialized
+    if wfc.tcast is None:
+        LOG.error('Server is not initialized. Please start it first.')
+        _emit_status('Server not initialized. Please start it first.', 'error', ready=wfc.ready)
         return
 
     wfc.tcast.play_video()
@@ -270,18 +259,13 @@ def play():
 
 @socketio.on('stop_server')
 def stop_server():
-    if wfc.job is None:
+    # Nothing to stop really, just reset the state
+    if wfc.tcast is None:
         LOG.warning('Nothing to stop.')
         return
-    _emit_status('Stopping ...', 'info', ready=False)
-    try:
-        send_stop_job_command(connection=redis, job_id=wfc.job.get_id())
-        sleep(1)
-    except InvalidJobOperation as exc:
-        LOG.warning(str(exc))
-    LOG.info(wfc.job.get_status())
-    if wfc.job.get_status() in ['finished', 'stopped', 'failed', 'cancelled']:
-        _emit_status('Stopped', 'error', ready=wfc.ready)
+
+    wfc.tcast = None
+    _emit_status('Stopped', 'error', ready=wfc.ready)
 
 
 if __name__ == '__main__':

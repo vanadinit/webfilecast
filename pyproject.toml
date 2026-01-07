@@ -23,7 +23,6 @@ dependencies = [
     "redis",
     "flask_socketio",
     "filetype>=1.0.0",
-    "rq",
 ]
 
 [project.urls]
