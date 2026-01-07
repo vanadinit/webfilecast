@@ -57,5 +57,45 @@ pip install "webfilecast[deployment]"
     ```
     Then open your browser and navigate to the specified host and port.
 
+## Advanced Configuration (Reverse Proxy)
+If you are running Webfilecast behind a reverse proxy (like Nginx) and want to serve the video files through the same domain/port (to avoid mixed content issues or firewall restrictions), you can configure `terminalcast` to use a fixed port and a specific public URL.
+
+1.  **Set additional Environment Variables:**
+    - `TERMINALCAST_PORT`: The fixed port where the internal video server should listen (e.g., `8081`).
+    - `TERMINALCAST_VIDEO_URL`: The public URL that the Chromecast and browser should use to access the video (e.g., `https://your-domain.com/video`).
+
+2.  **Configure Nginx:**
+    Add a location block to your Nginx configuration to proxy the video traffic to the internal `TERMINALCAST_PORT`.
+
+    ```nginx
+    server {
+        listen 443 ssl;
+        server_name your-domain.com;
+        
+        # ... ssl config ...
+
+        # Main Webfilecast App
+        location / {
+            proxy_pass http://127.0.0.1:8000; # Gunicorn port
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            
+            # WebSocket support
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+        }
+
+        # Video Streaming
+        location /video {
+            proxy_pass http://127.0.0.1:8081/video; # TERMINALCAST_PORT
+            proxy_set_header Host $host;
+            proxy_buffering off; # Important for streaming
+        }
+    }
+    ```
+
 ## How it works
 The application scans the `MOVIE_DIRECTORY` for video files and caches their metadata in Redis. The web frontend communicates with the Python backend via Socket.IO to select a file, choose an audio stream, and control the casting process. When a video is to be played, a temporary web server is started via `terminalcast` to stream the file to the Chromecast.

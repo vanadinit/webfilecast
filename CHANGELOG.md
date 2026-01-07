@@ -2,6 +2,9 @@
 
 All notable changes to this project will be in this document.
 
+## [1.1.4]
+- Updated terminalcast dependency and updated README
+
 ## [1.1.1/1.1.2/1.1.3] - 2026-01-03
 
 ### Added
