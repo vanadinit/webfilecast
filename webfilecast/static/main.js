@@ -1,43 +1,30 @@
 window.socket = io.connect();
-window.currentVideoUrl = ''; // Global variable to store the video URL
 window.movieFiles = []; // Global variable to store the full movie list
 
 function websocketStatus() {
     const statusDot = document.getElementById('ws_status_dot');
 
-    // Initial state
     statusDot.className = 'connecting';
     statusDot.title = 'Connecting...';
 
-    window.socket.on('connect', () => {
-        statusDot.className = 'connected';
-        statusDot.title = 'Connected';
-    });
-
-    window.socket.on('disconnect', () => {
-        statusDot.className = 'disconnected';
-        statusDot.title = 'Disconnected';
-    });
+    window.socket.on('connect', () => {statusDot.className = 'connected'; statusDot.title = 'Connected';});
+    window.socket.on('disconnect', () => {statusDot.className = 'disconnected'; statusDot.title = 'Disconnected';});
 }
 
-function setPlaybackButtonsState(enabled) {
+function setPlayButtonsState(enabled) {
     const chromecastButton = document.getElementById('play_chromecast_button');
     const browserButton = document.getElementById('open_in_browser_button');
 
+    chromecastButton.disabled = !enabled;
+    browserButton.disabled = !enabled;
+
     if (enabled) {
-        chromecastButton.disabled = false;
-        browserButton.disabled = false;
         chromecastButton.title = 'Play on Chromecast';
         browserButton.title = 'Open in Browser';
-        browserButton.onclick = function() {
-            window.open(window.currentVideoUrl, '_blank');
-        };
     } else {
-        chromecastButton.disabled = true;
-        browserButton.disabled = true;
-        chromecastButton.title = 'Start the server first';
-        browserButton.title = 'Start the server first';
-        browserButton.onclick = null;
+        const defaultTitle = 'Select a file and audio track first';
+        chromecastButton.title = defaultTitle;
+        browserButton.title = defaultTitle;
     }
 }
 
@@ -94,11 +81,9 @@ window.socket.on('lang_options', function (options) {
         }
     });
 
-    // Clear previous options and add to DOM
     langListElem.innerHTML = '';
     langListElem.appendChild(langListSelect);
 
-    // Case 1: No options
     if (options.length === 0) {
         const placeholder = document.createElement("option");
         placeholder.innerHTML = "No audio streams found";
@@ -107,7 +92,6 @@ window.socket.on('lang_options', function (options) {
         return;
     }
 
-    // Case 2: Multiple options, add a placeholder
     if (options.length > 1) {
         const placeholder = document.createElement("option");
         placeholder.innerHTML = "Select Audio Language";
@@ -117,7 +101,6 @@ window.socket.on('lang_options', function (options) {
         langListSelect.appendChild(placeholder);
     }
 
-    // Add all real options (for both 1 and >1 cases)
     for (let i = 0; i < options.length; i++) {
         const opt = document.createElement("option");
         opt.value = options[i][0];
@@ -125,16 +108,10 @@ window.socket.on('lang_options', function (options) {
         langListSelect.appendChild(opt);
     }
 
-    // Case 3: Exactly one option, auto-select it and notify backend
     if (options.length === 1) {
         langListSelect.value = options[0][0];
         window.socket.emit('select_lang', langListSelect.value);
     }
-});
-
-window.socket.on('video_link', function (linkUrl) {
-    window.currentVideoUrl = linkUrl;
-    setPlaybackButtonsState(true);
 });
 
 window.socket.on('player_status_update', function (status) {
@@ -143,16 +120,30 @@ window.socket.on('player_status_update', function (status) {
 
     statusText.className = `msg-${status.type}`;
     statusText.innerHTML = status.msg;
-    progressBar.style.width = '0%'; // Reset progress on new status
+    progressBar.style.width = '0%';
 
     if (status.ready !== undefined) {
-        document.getElementById('start_server_button').disabled = !status.ready;
+        setPlayButtonsState(status.ready);
     }
+});
 
-    if (status.type === 'error' && status.msg === 'Stopped') {
-        setPlaybackButtonsState(false);
-        window.currentVideoUrl = '';
-    }
+window.socket.on('playback_started', function () {
+    const chromecastButton = document.getElementById('play_chromecast_button');
+    chromecastButton.classList.add('streaming');
+    chromecastButton.title = 'Stop Playback';
+    chromecastButton.onclick = function() {
+        window.socket.emit('stop_playback');
+    };
+});
+
+window.socket.on('playback_stopped', function () {
+    const chromecastButton = document.getElementById('play_chromecast_button');
+    chromecastButton.classList.remove('streaming');
+    chromecastButton.title = 'Play on Chromecast';
+    chromecastButton.onclick = function() {
+        window.socket.emit('play_on_chromecast');
+    };
+    setPlayButtonsState(true);
 });
 
 window.socket.on('conversion_progress', function (data) {
@@ -199,7 +190,10 @@ window.socket.on('logmessage', function (msg) {
 
 $(document).ready(function () {
     websocketStatus();
-    setPlaybackButtonsState(false); // Initially disable playback buttons
+    setPlayButtonsState(false);
+    document.getElementById('open_in_browser_button').onclick = function() {
+        window.open('/video', '_blank');
+    };
 
     const searchInput = document.getElementById('file_search_input');
     const dropdown = document.getElementById('file_list_dropdown');
@@ -212,7 +206,6 @@ $(document).ready(function () {
     searchInput.addEventListener('input', () => {
         const rawSearch = searchInput.value.toLowerCase();
 
-        // Regex to split by spaces, but keep quoted phrases together
         const searchParts = rawSearch.match(/".*?"|[^"\s]+/g) || [];
 
         if (searchParts.length === 0) {
@@ -224,10 +217,8 @@ $(document).ready(function () {
             const fileName = file[1].toLowerCase();
             return searchParts.every(part => {
                 if (part.startsWith('"') && part.endsWith('"')) {
-                    // Exact phrase match
                     return fileName.includes(part.substring(1, part.length - 1));
                 } else {
-                    // Simple term match
                     return fileName.includes(part);
                 }
             });
@@ -235,7 +226,6 @@ $(document).ready(function () {
         renderFileList(filteredFiles);
     });
 
-    // Hide dropdown if clicked outside
     document.addEventListener('click', (event) => {
         if (!document.getElementById('file_search_container').contains(event.target)) {
             dropdown.style.display = 'none';

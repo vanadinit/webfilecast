@@ -6,7 +6,7 @@ from time import sleep
 from typing import Optional
 
 from filetype import is_video
-from flask import Flask, send_from_directory, request, send_file, url_for
+from flask import Flask, send_from_directory, send_file, url_for
 from flask_socketio import SocketIO, emit
 from redis import Redis
 from terminalcast import FileMetadata, create_tmp_video_file, AudioMetadata, TerminalCast, NoChromecastAvailable
@@ -149,13 +149,11 @@ def get_files(force: bool = False):
     LOG.info('WS: get_files')
     movie_files = wfc.update_redis_file_cache(force=force)
 
-    # Prepare list for sorting
     file_list = [
         (movie.filepath, movie.ffoutput['format'].get('tags', {}).get('title', movie.filepath.split('/')[-1]))
         for movie in movie_files.values()
     ]
 
-    # Sort naturally by the display name (the second element in the tuple)
     sorted_files = sorted(file_list, key=lambda item: natural_sort_key(item[1]))
 
     emit('movie_files', sorted_files)
@@ -166,7 +164,7 @@ def get_files(force: bool = False):
 def select_file(filepath: str):
     LOG.info('WS: select_file')
     wfc.orig_file_path = wfc.file_path = filepath
-    wfc.audio_ready = False  # Reset audio readiness on new file
+    wfc.audio_ready = False
     _emit_status('File selected. Please select audio.', 'info', ready=False)
     emit('show_file_details', wfc.file_metadata.details())
 
@@ -222,50 +220,38 @@ def convert_for_audio_stream():
         _emit_status('Conversion failed. Please check logs.', 'error', ready=False)
 
 
-@socketio.on('start_server')
-def start_server():
-    if wfc.ready:
-        _emit_status('Starting Server ...', 'info', ready=False)
-
-        video_url = url_for('video', _external=True)
-        wfc.tcast = TerminalCast(filepath=wfc.file_path, video_url=video_url, select_ip=False)
-
-        LOG.info(f'Video URL: {video_url}')
-        emit('video_link', video_url)
-
-        try:
-            # We just check if we can connect to a Chromecast
-            LOG.info(wfc.tcast.cast.status)
-            _emit_status('Server ready. Ready to play.', 'success', ready=False)
-        except NoChromecastAvailable as exc:
-            LOG.warning(f'No Chromecast found: {exc}\n The video might be available direct via URL anyway.')
-            _emit_status('No Chromecast found. Video might be available via URL.', 'warning', ready=False)
-    else:
+@socketio.on('play_on_chromecast')
+def play_on_chromecast():
+    if not wfc.ready:
         is_ready()
-
-
-@socketio.on('play')
-def play():
-    # We don't check for job status anymore, just if tcast is initialized
-    if wfc.tcast is None:
-        LOG.error('Server is not initialized. Please start it first.')
-        _emit_status('Server not initialized. Please start it first.', 'error', ready=wfc.ready)
         return
 
-    wfc.tcast.play_video()
-    LOG.info(wfc.tcast.cast.media_controller.status)
-    _emit_status('Playing ...', 'success', ready=False)
+    _emit_status('Connecting to Chromecast ...', 'info', ready=False)
+    video_url = url_for('video', _external=True)
+    wfc.tcast = TerminalCast(filepath=wfc.file_path, video_url=video_url, select_ip=False)
+    LOG.info(f'Video URL: {video_url}')
+    
+    try:
+        LOG.info(wfc.tcast.cast.status)
+        _emit_status('Connected to Chromecast. Starting playback...', 'success', ready=False)
+        wfc.tcast.play_video()
+        LOG.info(wfc.tcast.cast.media_controller.status)
+        _emit_status('Playing ...', 'success', ready=False)
+        emit('playback_started')
+    except NoChromecastAvailable as exc:
+        LOG.warning(f'No Chromecast found: {exc}')
+        _emit_status('No Chromecast found.', 'error', ready=True)
 
 
-@socketio.on('stop_server')
-def stop_server():
-    # Nothing to stop really, just reset the state
-    if wfc.tcast is None:
-        LOG.warning('Nothing to stop.')
-        return
-
-    wfc.tcast = None
-    _emit_status('Stopped', 'error', ready=wfc.ready)
+@socketio.on('stop_playback')
+def stop_playback():
+    if wfc.tcast:
+        wfc.tcast.stop_cast()
+        wfc.tcast = None
+        _emit_status('Playback stopped.', 'info', ready=True)
+        emit('playback_stopped')
+    else:
+        _emit_status('Nothing to stop.', 'warning', ready=True)
 
 
 if __name__ == '__main__':
